@@ -1,6 +1,3 @@
-open Lib
-open Monads
-
 module P = PersistentUnionFind
 
 module Formula = struct
@@ -34,7 +31,7 @@ module Formula = struct
 
 end
 
-module ProofMonad = Monads.Make(Formula)
+module ProofMonad = Monads.Make(Formula)(Monads.MExplore)
 
 open ProofMonad
 open Formula
@@ -56,7 +53,6 @@ let bind_flexible (env: env): var * env =
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
  * unifies with a rigid instantiates onto that rigid. *)
 let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =
-  let open MOption in
   match P.find v1 env, P.find v2 env with
   | Flexible, Flexible
   | Flexible, Rigid ->
@@ -92,15 +88,22 @@ let rec solve (env: env) (goal: formula): env outcome =
       end
 
 
-let _ =
-  let env = empty in
-  let x, env = bind_rigid env in
-  let y, env = bind_flexible env in
-  let z, env = bind_rigid env in
-  (* x = ?y /\ z = z *)
-  let g1 = And (Equals (x, y), Equals (z, z)) in
-  (* x = ?y /\ ?y = z *)
-  let g2 = And (Equals (x, y), Equals (y, z)) in
-  assert (is_Some (solve env g1));
-  assert (is_None (solve env g2));
-  ()
+module Test = struct
+
+  let is_Cons x = LazyList.(next x <> Nil)
+  let is_Nil x = LazyList.(next x = Nil)
+
+  let _ =
+    let env = empty in
+    let x, env = bind_rigid env in
+    let y, env = bind_flexible env in
+    let z, env = bind_rigid env in
+    (* x = ?y /\ z = z *)
+    let g1 = And (Equals (x, y), Equals (z, z)) in
+    (* x = ?y /\ ?y = z *)
+    let g2 = And (Equals (x, y), Equals (y, z)) in
+    assert (is_Cons (solve env g1));
+    assert (is_Nil (solve env g2));
+    ()
+
+end

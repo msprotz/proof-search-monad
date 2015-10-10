@@ -21,8 +21,4 @@ module Make = functor (F: FORMULA) -> struct
   and premises =
     (* Useless constructor to avoid creating a cyclic type abbreviation. *)
     Premises of derivation list
-
-  (* The result of a proof search. *)
-  type 'a outcome =
-    ('a * derivation) option
 end

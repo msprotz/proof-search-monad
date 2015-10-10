@@ -4,6 +4,8 @@ module type MONAD = sig
   type 'a m
   val return: 'a -> 'a m
   val bind: 'a m -> ('a -> 'b m) -> 'b m
+  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
+  val nothing: 'a m
 end
 
 module type MONOID = sig
@@ -12,7 +14,6 @@ module type MONOID = sig
   val append: a -> a -> a
 end
 
-(* A monad. *)
 module MOption: sig
   type 'a m = 'a option
   val return: 'a -> 'a m
@@ -30,7 +31,21 @@ end = struct
   let nothing = None
 end
 
-(* A monad transformer -- signature for monad transformers not written yet. *)
+module MExplore: sig
+  type 'a m = 'a LazyList.t
+  val return: 'a -> 'a m
+  val bind: 'a m -> ('a -> 'b m) -> 'b m
+  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
+  val nothing: 'a m
+end = struct
+  type 'a m = 'a LazyList.t
+  let return = LazyList.one
+  let bind x f =
+    LazyList.flattenl (LazyList.map f x)
+  let ( >>= ) = bind
+  let nothing = LazyList.nil
+end
+
 module WriterT (M: MONAD) (L: MONOID): sig
   type 'a m = (L.a * 'a) M.m
 
@@ -56,24 +71,26 @@ end = struct
   let ( >>= ) = bind
 end
 
-(* The monoid of derivation lists. *)
-module DList (F: FORMULA) = struct
-  type a = Make(F).derivation list
-  let empty = []
-  let append = List.append
-end
+module Make(F: FORMULA)(M: MONAD) = struct
+  module Proofs = ProofTree.Make(F)
 
-(* The monad of proofs. *)
-module MProof(F: FORMULA) = WriterT(MOption)(DList(F))
+  (* The monoid of derivation lists. *)
+  module L = struct
+    type a = Proofs.derivation list
+    let empty = []
+    let append = List.append
+  end
 
-(* Now with outcomes + derivations. *)
-module Make(F: FORMULA) = struct
-  include MProof(F)
-  include Make(F)
+  include WriterT(M)(L)
+  include Proofs
+
+  (* The result of a proof search. *)
+  type 'a outcome =
+    ('a * derivation) M.m
 
   (* Injection of an ['a outcome] into the monad (it becomes a premise). *)
   let premise (outcome: 'a outcome): 'a m =
-    MOption.bind outcome (fun (env, derivation) ->
+    M.bind outcome (fun (env, derivation) ->
       tell [ derivation ] >>= fun () ->
       return env
     )
@@ -81,8 +98,8 @@ module Make(F: FORMULA) = struct
   (* Equivalent of [runMProof]: collect the premises in order to compute the
    * outcome. *)
   let prove (goal: goal) (rule: rule_name) (x: 'a m): 'a outcome =
-    MOption.(x >>= (fun (premises, env) ->
-      return (env, (goal, (rule, Premises (List.rev premises))))))
+    M.(x >>= fun (premises, env) ->
+      return (env, (goal, (rule, Premises (List.rev premises)))))
 
   (* Create an outcome from an axiom. *)
   let axiom (env: 'a) (goal: goal) (axiom: rule_name): 'a outcome =
@@ -90,5 +107,5 @@ module Make(F: FORMULA) = struct
 
   (* The failed outcome. *)
   let fail: 'a outcome =
-    None
+    M.nothing
 end
