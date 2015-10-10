@@ -17,6 +17,8 @@ module Make = functor (F: FORMULA) -> struct
     | R_And
     | R_Instantiate
     | R_Refl
+    | R_OrL
+    | R_OrR
 
   and premises =
     (* Useless constructor to avoid creating a cyclic type abbreviation. *)

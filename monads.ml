@@ -5,7 +5,9 @@ module type MONAD = sig
   val return: 'a -> 'a m
   val bind: 'a m -> ('a -> 'b m) -> 'b m
   val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
+
   val nothing: 'a m
+  val of_list: 'a m list -> 'a m
 end
 
 module type MONOID = sig
@@ -20,6 +22,7 @@ module MOption: sig
   val bind: 'a m -> ('a -> 'b m) -> 'b m
   val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
   val nothing: 'a m
+  val of_list: 'a m list -> 'a m
 end = struct
   type 'a m = 'a option
   let return x = Some x
@@ -29,6 +32,10 @@ end = struct
     | None -> None
   let ( >>= ) = bind
   let nothing = None
+  let rec of_list = function
+    | Some x :: _ -> Some x
+    | None :: xs -> of_list xs
+    | [] -> None
 end
 
 module MExplore: sig
@@ -37,6 +44,7 @@ module MExplore: sig
   val bind: 'a m -> ('a -> 'b m) -> 'b m
   val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
   val nothing: 'a m
+  val of_list: 'a m list -> 'a m
 end = struct
   type 'a m = 'a LazyList.t
   let return = LazyList.one
@@ -44,6 +52,7 @@ end = struct
     LazyList.flattenl (LazyList.map f x)
   let ( >>= ) = bind
   let nothing = LazyList.nil
+  let of_list = LazyList.flatten
 end
 
 module WriterT (M: MONAD) (L: MONOID): sig
@@ -108,4 +117,7 @@ module Make(F: FORMULA)(M: MONAD) = struct
   (* The failed outcome. *)
   let fail: 'a outcome =
     M.nothing
+
+  let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
+    M.of_list (List.map (fun (r, x) -> prove goal r (f x)) args)
 end

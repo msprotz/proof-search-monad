@@ -10,5 +10,8 @@ endif
 clean:
 	ocamlbuild -clean
 
+test: all
+	./proofSearchMonad.native
+
 tags:
 	find . -path ./_build -prune -o -iname '*.ml*' | xargs ctags

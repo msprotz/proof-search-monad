@@ -7,6 +7,7 @@ module Formula = struct
   type formula =
     | Equals of var * var
     | And of formula * formula
+    | Or of formula * formula
 
   (** Variables as equivalence classes in a union-find. *)
 
@@ -22,15 +23,9 @@ module Formula = struct
   and var = P.point
 
   and env = descr P.state
-
-  (* Destructors. *)
-  let assert_equals =
-    function Equals (v1, v2) -> v1, v2 | _ -> assert false
-  let assert_and =
-    function And (f1, f2) -> f1, f2 | _ -> assert false
-
 end
 
+(* [MExplore] and [MOption] both work here. *)
 module ProofMonad = Monads.Make(Formula)(Monads.MExplore)
 
 open ProofMonad
@@ -86,6 +81,11 @@ let rec solve (env: env) (goal: formula): env outcome =
         premise (solve env g2) >>=
         return
       end
+  | Or (g1, g2) ->
+      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun g ->
+        premise (solve env g) >>=
+        return
+      )
 
 
 module Test = struct
@@ -98,12 +98,17 @@ module Test = struct
     let x, env = bind_rigid env in
     let y, env = bind_flexible env in
     let z, env = bind_rigid env in
-    (* x = ?y /\ z = z *)
+    (* Example 1: « x = ?y /\ z = z ». Uses all three rules. *)
     let g1 = And (Equals (x, y), Equals (z, z)) in
-    (* x = ?y /\ ?y = z *)
-    let g2 = And (Equals (x, y), Equals (y, z)) in
+    (* Example 2: « x = ?y /\ ?y = z ». The whole point is that the second
+     * premise of the conjunction is not even evaluated (since the first one
+     * failed). *)
+    let g2 = And (Equals (x, z), Equals (y, z)) in
+    (* Example 3: « (?y = x \/ ?y = z) /\ ?y = z ». This one backtracks. *)
+    let g3 = And (Or (Equals (y, x), Equals (y, z)), Equals (y, z)) in
     assert (is_Cons (solve env g1));
     assert (is_Nil (solve env g2));
+    assert (is_Cons (solve env g3));
     ()
 
 end
