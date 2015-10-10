@@ -105,7 +105,7 @@ module Make(F: FORMULA)(M: MONAD) = struct
    * outcome. *)
   let prove (goal: goal) (rule: rule_name) (x: 'a m): 'a outcome =
     M.(x >>= fun (premises, env) ->
-      return (env, (goal, (rule, Premises (List.rev premises)))))
+      return (env, (goal, (rule, Premises premises))))
 
   (* Create an outcome from an axiom. *)
   let axiom (env: 'a) (goal: goal) (axiom: rule_name): 'a outcome =
