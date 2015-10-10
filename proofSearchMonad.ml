@@ -55,26 +55,27 @@ let bind_flexible (env: env): var * env =
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
  * unifies with a rigid instantiates onto that rigid. *)
-let unify (env: env) (v1: var) (v2: var) =
+let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =
   let open MOption in
   match P.find v1 env, P.find v2 env with
   | Flexible, Flexible
   | Flexible, Rigid ->
-      return (P.union v1 v2 env)
+      let env = P.union v1 v2 env in
+      prove goal R_Instantiate begin
+        premise (prove_equality env goal v1 v2) >>=
+        return
+      end
   | Rigid, Flexible ->
-      return (P.union v2 v1 env)
+      let env = P.union v2 v1 env in
+      prove goal R_Instantiate begin
+        premise (prove_equality env goal v2 v1) >>=
+        return
+      end
   | Rigid, Rigid ->
       if P.same v1 v2 env then
-        return env
+        axiom env goal R_Refl
       else
-        nothing
-
-let try_refl (env: env) (v1: var) (v2: var) =
-  let goal = Equals (v1, v2) in
-  if P.same v1 v2 env then
-    axiom env goal R_Refl
-  else
-    fail
+        fail
 
 
 (** Solving *)
@@ -82,12 +83,7 @@ let try_refl (env: env) (v1: var) (v2: var) =
 let rec solve (env: env) (goal: formula): env outcome =
   match goal with
   | Equals (v1, v2) ->
-      (* try_refl env v1 v2 ||| *)
-
-      (* try_unify env v1 v2 >>= fun env -> *)
-      (* try_refl env v1 v2 >>= *)
-      (* qed *)
-      assert false
+      prove_equality env goal v1 v2
   | And (f1, f2) ->
       prove goal R_And begin
         premise (solve env f1) >>= fun env ->

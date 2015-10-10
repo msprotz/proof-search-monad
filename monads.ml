@@ -66,6 +66,7 @@ end
 (* The monad of proofs. *)
 module MProof(F: FORMULA) = WriterT(MOption)(DList(F))
 
+(* Now with outcomes + derivations. *)
 module Make(F: FORMULA) = struct
   include MProof(F)
   include Make(F)
