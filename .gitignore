@@ -1,0 +1,17 @@
+Makefile.local
+Makefile.config
+_build
+mezzo
+test
+testsuite
+*.native
+*.byte
+bisect*.out
+coverage*.out
+configure.ml
+callgrind.out.*
+tmp/*
+myocamlbuild.ml
+.DS_Store
+*#
+*~

@@ -1,0 +1,81 @@
+\documentclass{sigplanconf}
+
+\usepackage{amsmath}
+\usepackage{tabularx}
+\usepackage{listings}
+\lstset{
+  language=caml,
+  basicstyle=\ttfamily,
+}
+\def\li{\lstinline}
+
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{CONF 'yy}{Month d--d, 20yy, City, ST, Country}
+\copyrightyear{20yy}
+\copyrightdata{978-1-nnnn-nnnn-n/yy/mm}
+\doi{nnnnnnn.nnnnnnn}
+
+% Uncomment one of the following two, if you are not going for the
+% traditional copyright transfer agreement.
+
+%\exclusivelicense                % ACM gets exclusive license to publish,
+                                  % you retain copyright
+
+%\permissiontopublish             % ACM gets nonexclusive license to publish
+                                  % (paid open-access papers,
+                                  % short abstracts)
+
+\titlebanner{banner above paper title}        % These are ignored unless
+\preprintfooter{short description of paper}   % 'preprint' option specified.
+
+\title{Function pearl: the proof search monad}
+\subtitle{Subtitle Text, if any}
+
+\authorinfo{Jonathan Protzenko}
+           {Microsoft Research}
+           {protz@microsoft.com}
+
+\maketitle
+
+\begin{abstract}
+  We present the proof search monad: the combination of the option monad, the
+  backtracking monad, and the sequencing monad. The proof search monad allows
+  writing a proof search engine that looks like the actual derivation rules,
+  while generating a proof tree at the same time.
+\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+% general terms are not compulsory anymore,
+% you may leave them out
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\section{Conjunctions of equalities}
+
+Just the regular option monad. Lazyness is already built-in (the second
+computation is suspended).
+
+In this first version, we treat the simple problem of conjunction of
+equalities\dots written in an elegant style with a persistent union-find,
+functional, the option monad, because we may fail.
+
+Lazyness already built-in, evaluation stops right after the first failing
+premise has been hit.
+
+Goal: build a derivation tree at the same time. Requires: recording the
+premises, in order to build an application of the rule.
+
+\bibliographystyle{abbrvnat}
+\bibliography{local}
+
+\end{document}
