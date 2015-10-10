@@ -1,0 +1,329 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+>>=	./monads.ml	/^  let ( >>= ) = bind$/;"	f
+>>=	./monads.ml	/^  let ( >>= ) = bind$/;"	f	Module:MONAD
+>>=	./monads.ml	/^  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m$/;"	f
+>>=	./monads.ml	/^  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m$/;"	f	Module:MONAD
+>>=	./psm01option.ml	/^  let ( >>= ) x f =$/;"	f	Module:Option
+And	./proofSearchMonad.ml	/^    | And of formula * formula$/;"	C	type:Formula/formula
+And	./psm01option.ml	/^  | And of formula * formula$/;"	C	type:formula
+And	./psm02withoutBacktracking.ml	/^    | And of formula * formula$/;"	C	type:Formula/formula
+Big	./lib/patricia.ml	1;"	M
+Big	./lib/patricia.mli	1;"	M
+Branch	./lib/patricia.ml	/^    | Branch of int * X.mask * 'a t * 'a t$/;"	C	type:Make/t
+Cons	./lib/LazyList.ml	/^  | Cons of 'a * 'a t$/;"	C	type:node
+Cons	./lib/LazyList.mli	/^and 'a node = Nil | Cons of 'a * 'a t$/;"	C	type:node
+Domain	./lib/gMap.mli	1;"	M	Module:S
+Empty	./lib/patricia.ml	/^    | Empty$/;"	C	type:Make/t
+Endianness	./lib/patricia.ml	1;"	M
+Equals	./proofSearchMonad.ml	/^    | Equals of var * var$/;"	C	type:Formula/formula
+Equals	./psm01option.ml	/^  | Equals of var * var$/;"	C	type:formula
+Equals	./psm02withoutBacktracking.ml	/^    | Equals of var * var$/;"	C	type:Formula/formula
+Exists	./lib/patricia.ml	/^  exception Exists$/;"	e
+FORMULA	./proofTree.ml	1;"	M
+Flexible	./proofSearchMonad.ml	/^    | Flexible$/;"	C	type:Formula/descr
+Flexible	./psm01option.ml	/^  | Flexible$/;"	C	type:descr
+Flexible	./psm02withoutBacktracking.ml	/^    | Flexible$/;"	C	type:Formula/descr
+Formula	./proofSearchMonad.ml	1;"	M
+Formula	./psm02withoutBacktracking.ml	1;"	M
+Found	./lib/LazyList.ml	/^  let module M = struct exception Found of elt end in$/;"	e
+GMap	./lib/gMap.mli	1;"	M
+GSet	./lib/gSet.mli	1;"	M
+Got	./lib/patricia.ml	/^  exception Got of int$/;"	e
+LazyList	./lib/LazyList.ml	1;"	M
+LazyList	./lib/LazyList.mli	1;"	M
+Leaf	./lib/patricia.ml	/^    | Leaf of int * 'a$/;"	C	type:Make/t
+Lib	./lib.ml	1;"	M
+Link	./lib/PersistentUnionFind.ml	/^  | Link of location$/;"	C	type:content
+Little	./lib/patricia.ml	1;"	M
+Little	./lib/patricia.ml	1;"	M	Module:Endianness
+Little	./lib/patricia.mli	1;"	M
+MExplore	./monads.ml	1;"	M
+MONAD	./monads.ml	1;"	M
+MONOID	./monads.ml	1;"	M	Module:MONAD
+MOption	./monads.ml	1;"	M	Module:MONAD
+Make	./lib/patricia.ml	1;"	M
+Make	./proofTree.ml	1;"	M
+Map	./lib/PersistentRef.ml	1;"	M
+Monads	./monads.ml	1;"	M
+Nil	./lib/LazyList.ml	/^  | Nil$/;"	C	type:node
+Nil	./lib/LazyList.mli	/^and 'a node = Nil | Cons of 'a * 'a t$/;"	C	type:node
+NotDisjoint	./lib/patricia.ml	/^  exception NotDisjoint$/;"	e
+Option	./psm01option.ml	1;"	M
+P	./proofSearchMonad.ml	1;"	M
+P	./psm01option.ml	1;"	M
+P	./psm02withoutBacktracking.ml	1;"	M
+Patricia	./lib/patricia.ml	1;"	M
+Patricia	./lib/patricia.mli	1;"	M
+PersistentRef	./lib/PersistentRef.ml	1;"	M
+PersistentRef	./lib/PersistentRef.mli	1;"	M
+PersistentUnionFind	./lib/PersistentUnionFind.ml	1;"	M
+PersistentUnionFind	./lib/PersistentUnionFind.mli	1;"	M
+Premises	./proofTree.ml	/^    Premises of derivation list$/;"	C	type:premises
+ProofMonad	./proofSearchMonad.ml	1;"	M
+ProofMonad	./psm02withoutBacktracking.ml	1;"	M
+ProofSearchMonad	./proofSearchMonad.ml	1;"	M
+ProofTree	./proofTree.ml	1;"	M
+Psm01option	./psm01option.ml	1;"	M
+Psm02withoutBacktracking	./psm02withoutBacktracking.ml	1;"	M
+R_And	./proofTree.ml	/^    | R_And$/;"	C	type:Make/rule_name
+R_Instantiate	./proofTree.ml	/^    | R_Instantiate$/;"	C	type:Make/rule_name
+R_Refl	./proofTree.ml	/^    | R_Refl$/;"	C	type:Make/rule_name
+Rigid	./proofSearchMonad.ml	/^    | Rigid$/;"	C	type:Formula/descr
+Rigid	./psm01option.ml	/^  | Rigid$/;"	C	type:descr
+Rigid	./psm02withoutBacktracking.ml	/^    | Rigid$/;"	C	type:Formula/descr
+Root	./lib/PersistentUnionFind.ml	/^  | Root of 'a$/;"	C	type:content
+S	./lib/gMap.mli	1;"	M
+S	./lib/gSet.mli	1;"	M
+S	./lib/patricia.ml	1;"	M	Module:Endianness
+Unchanged	./lib/gMap.mli	/^  exception Unchanged$/;"	e	Module:S
+Unchanged	./lib/patricia.ml	/^  exception Unchanged$/;"	e
+WriterT	./monads.ml	1;"	M
+a	./monads.ml	/^  type a$/;"	t	Module:MONAD/MONOID
+add	./lib/gMap.mli	/^  val add: key -> 'a -> 'a t -> 'a t$/;"	v	Module:S
+add	./lib/gSet.mli	/^  val add: element -> t -> t$/;"	v	Module:S
+add	./lib/patricia.ml	/^  let add x s =$/;"	v
+append	./monads.ml	/^  val append: a -> a -> a$/;"	v	Module:MONAD/MONOID
+assert_and	./proofSearchMonad.ml	/^  let assert_and =$/;"	v
+assert_and	./psm02withoutBacktracking.ml	/^  let assert_and =$/;"	v
+assert_equals	./proofSearchMonad.ml	/^  let assert_equals =$/;"	v
+assert_equals	./psm02withoutBacktracking.ml	/^  let assert_equals =$/;"	v
+basic_add	./lib/patricia.ml	/^  let basic_add decide k d m =$/;"	v
+bind	./monads.ml	/^  let bind x f =$/;"	v
+bind	./monads.ml	/^  let bind x f =$/;"	v	Module:MONAD
+bind	./monads.ml	/^  val bind: 'a m -> ('a -> 'b m) -> 'b m$/;"	v
+bind	./monads.ml	/^  val bind: 'a m -> ('a -> 'b m) -> 'b m$/;"	v	Module:MONAD
+bind_flexible	./proofSearchMonad.ml	/^let bind_flexible (env: env): var * env =$/;"	v
+bind_flexible	./psm01option.ml	/^let bind_flexible (env: env): var * env =$/;"	v
+bind_flexible	./psm02withoutBacktracking.ml	/^let bind_flexible (env: env): var * env =$/;"	v
+bind_rigid	./proofSearchMonad.ml	/^let bind_rigid (env: env): var * env =$/;"	v
+bind_rigid	./psm01option.ml	/^let bind_rigid (env: env): var * env =$/;"	v
+bind_rigid	./psm02withoutBacktracking.ml	/^let bind_rigid (env: env): var * env =$/;"	v
+branching_bit	./lib/patricia.ml	/^    let branching_bit i0 i1 =$/;"	v
+branching_bit	./lib/patricia.ml	/^    let branching_bit i0 i1 =$/;"	v	Module:Endianness
+branching_bit	./lib/patricia.ml	/^    val branching_bit: int -> int -> mask$/;"	v	Module:Endianness/S
+build	./lib/patricia.ml	/^  let build p m t0 t1 =$/;"	v
+cardinal	./lib/gMap.mli	/^  val cardinal: 'a t -> int$/;"	v	Module:S
+cardinal	./lib/gSet.mli	/^  val cardinal: t -> int$/;"	v	Module:S
+choose	./lib/gMap.mli	/^  val choose: 'a t -> key * 'a$/;"	v	Module:S
+choose	./lib/gSet.mli	/^  val choose: t -> element$/;"	v	Module:S
+choose	./lib/patricia.ml	/^  let rec choose = function$/;"	v
+compare	./lib/PersistentRef.ml	/^let compare (l1 : int) (l2 : int) =$/;"	v
+compare	./lib/PersistentRef.mli	/^val compare: location -> location -> int$/;"	v
+compare	./lib/PersistentUnionFind.mli	/^val compare: point -> point -> int$/;"	v
+compare	./lib/gMap.mli	/^  val compare: ('a -> 'a -> int) -> 'a t -> 'a t -> int$/;"	v	Module:S
+compare	./lib/gSet.mli	/^  val compare: t -> t -> int$/;"	v	Module:S
+compare	./lib/patricia.ml	/^  let compare dcompare m1 m2 =$/;"	v
+concat	./lib/LazyList.mli	/^val concat : 'a t t -> 'a t$/;"	v
+cons	./lib/LazyList.ml	/^let cons hd tl =$/;"	v
+cons	./lib/LazyList.mli	/^val cons : 'a -> 'a t -> 'a t$/;"	v
+content	./lib/PersistentUnionFind.ml	/^type 'a content =$/;"	t
+corestrict	./lib/gMap.mli	/^  val corestrict: 'a t -> Domain.t -> 'a t$/;"	v	Module:S
+create	./lib/PersistentUnionFind.mli	/^val create: 'a -> 'a state -> point * 'a state$/;"	v
+decision	./lib/gMap.mli	/^  type 'a decision = 'a -> 'a -> 'a$/;"	t	Module:S
+decision	./lib/patricia.ml	/^  type 'a decision = 'a -> 'a -> 'a$/;"	t
+derivation	./proofTree.ml	/^  type derivation =$/;"	t	Module:Make
+descr	./proofSearchMonad.ml	/^  and descr =$/;"	t	Module:Formula
+descr	./psm01option.ml	/^and descr =$/;"	t
+descr	./psm02withoutBacktracking.ml	/^  and descr =$/;"	t	Module:Formula
+descx	./lib/PersistentUnionFind.ml	/^     let descx = find rx state$/;"	v
+descx	./lib/PersistentUnionFind.ml	/^  let descx = find rx state in$/;"	v
+diff	./lib/gSet.mli	/^  val diff: t -> t -> t$/;"	v	Module:S
+disjoint	./lib/gSet.mli	/^  val disjoint: t -> t -> bool$/;"	v	Module:S
+disjoint	./lib/patricia.ml	/^  let disjoint s t =$/;"	v
+domain	./lib/gMap.mli	/^  val domain: 'a t -> Domain.t$/;"	v	Module:S
+element	./lib/gSet.mli	/^  type element$/;"	t	Module:S
+elements	./lib/gSet.mli	/^  val elements: t -> element list$/;"	v	Module:S
+empty	./lib/PersistentRef.ml	/^let empty = {$/;"	v
+empty	./lib/PersistentRef.mli	/^val empty: 'a store$/;"	v
+empty	./lib/gMap.mli	/^  val empty: 'a t$/;"	v	Module:S
+empty	./lib/gSet.mli	/^  val empty: t$/;"	v	Module:S
+empty	./lib/patricia.ml	/^  let empty =$/;"	v	Module:Make
+empty	./monads.ml	/^  val empty: a$/;"	v	Module:MONAD/MONOID
+empty	./proofSearchMonad.ml	/^let empty: env = P.init ()$/;"	v
+empty	./psm01option.ml	/^let empty: env = P.init ()$/;"	v
+empty	./psm02withoutBacktracking.ml	/^let empty: env = P.init ()$/;"	v
+endo_map	./lib/gMap.mli	/^  val endo_map: ('a -> 'a) -> 'a t -> 'a t$/;"	v	Module:S
+env	./proofSearchMonad.ml	/^  and env = descr P.state$/;"	t
+env	./psm01option.ml	/^and env = descr P.state$/;"	t
+env	./psm02withoutBacktracking.ml	/^      let env = P.union v2 v1 env in$/;"	v
+env	./psm02withoutBacktracking.ml	/^  and env = descr P.state$/;"	t
+eq	./lib/PersistentRef.ml	/^let eq (l1 : int) (l2 : int) =$/;"	v
+eq	./lib/PersistentRef.mli	/^val eq: location -> location -> bool$/;"	v
+equal	./lib/gSet.mli	/^  val equal: t -> t -> bool$/;"	v	Module:S
+exists	./lib/LazyList.ml	/^let exists (f: 'a -> bool) (l: 'a t): bool =$/;"	v
+exists	./lib/LazyList.mli	/^val exists : ('a -> bool) -> 'a t -> bool$/;"	v
+exists	./lib/patricia.ml	/^  let exists p s =$/;"	v
+f2	./psm01option.ml	/^  let f2 = And (Equals (x, y), Equals (y, z)) in$/;"	v
+filter	./lib/LazyList.ml	/^let rec filter (f: 'a -> bool) (l: 'a t): 'a t =$/;"	v
+filter	./lib/LazyList.mli	/^val filter : ('a -> bool) -> 'a t -> 'a t$/;"	v
+filter	./lib/patricia.ml	/^  let filter predicate s =$/;"	v
+find	./lib/LazyList.ml	/^let find (type elt) (f: elt -> bool) (l: elt t): elt =$/;"	v
+find	./lib/LazyList.mli	/^val find : ('a -> bool) -> 'a t -> 'a$/;"	v
+find	./lib/PersistentUnionFind.ml	/^let find x state =$/;"	v
+find	./lib/PersistentUnionFind.mli	/^val find: point -> 'a state -> 'a$/;"	v
+find	./lib/gMap.mli	/^  val find: key -> 'a t -> 'a$/;"	v	Module:S
+find	./lib/patricia.ml	/^  let find =$/;"	v
+find_and_remove	./lib/gMap.mli	/^  val find_and_remove: key -> 'a t -> 'a * 'a t$/;"	v	Module:S
+find_and_remove	./lib/patricia.ml	/^  let find_and_remove =$/;"	v
+fine_add	./lib/gMap.mli	/^  val fine_add: 'a decision -> key -> 'a -> 'a t -> 'a t$/;"	v	Module:S
+fine_add	./lib/patricia.ml	/^  let fine_add decision x s =$/;"	v
+fine_union	./lib/gMap.mli	/^  val fine_union: 'a decision -> 'a t -> 'a t -> 'a t$/;"	v	Module:S
+fine_union	./lib/patricia.ml	/^  let fine_union decide m1 m2 =$/;"	v
+fine_union	./lib/patricia.ml	/^  let fine_union decision s1 s2 =$/;"	v
+flatten	./lib/LazyList.mli	/^val flatten : 'a t list -> 'a t$/;"	v
+flattenl	./lib/LazyList.mli	/^val flattenl : 'a t t -> 'a t$/;"	v
+fold	./lib/PersistentRef.mli	/^val fold: ('acc -> location -> 'a -> 'acc) -> 'acc -> 'a store -> 'acc$/;"	v
+fold	./lib/PersistentUnionFind.mli	/^val fold: ('acc -> point -> 'a -> 'acc) -> 'acc -> 'a state -> 'acc$/;"	v
+fold	./lib/gMap.mli	/^  val fold: (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b$/;"	v	Module:S
+fold	./lib/gSet.mli	/^  val fold: (element -> 'b -> 'b) -> t -> 'b -> 'b$/;"	v	Module:S
+fold_rev	./lib/gMap.mli	/^  val fold_rev: (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b$/;"	v	Module:S
+formula	./proofSearchMonad.ml	/^  type formula =$/;"	t	Module:Formula
+formula	./proofTree.ml	/^  type formula$/;"	t	Module:FORMULA
+formula	./psm01option.ml	/^type formula =$/;"	t
+formula	./psm02withoutBacktracking.ml	/^  type formula =$/;"	t	Module:Formula
+get	./lib/PersistentRef.ml	/^let get l { limit; heap } =$/;"	v
+get	./lib/PersistentRef.mli	/^val get: location -> 'a store -> 'a$/;"	v
+goal	./proofTree.ml	/^  and goal =$/;"	t	Module:Make
+hd	./lib/LazyList.ml	/^let hd (l: 'a t): 'a =$/;"	v
+hd	./lib/LazyList.mli	/^val hd : 'a t -> 'a$/;"	v
+heap	./lib/PersistentRef.ml	/^  heap:  'a Map.t$/;"	r	type:store
+highest_bit	./lib/patricia.ml	/^    let rec highest_bit x =$/;"	v	Module:Big
+init	./lib/PersistentUnionFind.mli	/^val init: unit -> 'a state$/;"	v
+inter	./lib/gSet.mli	/^  val inter: t -> t -> t$/;"	v	Module:S
+inter	./lib/patricia.ml	/^  let rec inter s t =$/;"	v
+is_None	./lib.ml	/^let is_None = function None -> true | Some _ -> false$/;"	v
+is_Some	./lib.ml	/^let is_Some = function Some _ -> true | None -> false$/;"	v
+is_empty	./lib/gMap.mli	/^  val is_empty: 'a t -> bool$/;"	v	Module:S
+is_empty	./lib/gSet.mli	/^  val is_empty: t -> bool$/;"	v	Module:S
+is_singleton	./lib/gMap.mli	/^  val is_singleton: 'a t -> (key * 'a) option$/;"	v	Module:S
+iter	./lib/LazyList.ml	/^let rec iter (f: 'a -> unit) (l: 'a t): unit =$/;"	v
+iter	./lib/LazyList.mli	/^val iter : ('a -> unit) -> 'a t -> unit$/;"	v
+iter	./lib/PersistentRef.ml	/^let iter f { heap; _ } =$/;"	v
+iter	./lib/PersistentRef.mli	/^val iter: ('a -> unit) -> 'a store -> unit$/;"	v
+iter	./lib/PersistentUnionFind.ml	/^let iter f state =$/;"	v
+iter	./lib/PersistentUnionFind.mli	/^val iter: ('a -> unit) -> 'a state -> unit$/;"	v
+iter	./lib/gMap.mli	/^  val iter: (key -> 'a -> unit) -> 'a t -> unit$/;"	v	Module:S
+iter	./lib/gSet.mli	/^  val iter: (element -> unit) -> t -> unit$/;"	v	Module:S
+iter	./lib/patricia.ml	/^  let rec iter f = function$/;"	v
+iter2	./lib/gMap.mli	/^  val iter2: (key -> 'a -> 'b -> unit) -> 'a t -> 'b t -> unit$/;"	v	Module:S
+iterator	./lib/patricia.ml	/^  let iterator m =$/;"	v
+key	./lib/gMap.mli	/^  type key$/;"	t	Module:S
+key	./lib/patricia.ml	/^  type key = int$/;"	t	Module:Make
+lift	./lib/gMap.mli	/^  val lift: (key -> 'a) -> Domain.t -> 'a t$/;"	v	Module:S
+limit	./lib/PersistentRef.ml	/^  limit: location;$/;"	r	type:store
+location	./lib/PersistentRef.ml	/^type location =$/;"	t
+location	./lib/PersistentRef.mli	/^type location$/;"	t
+lookup	./lib/gMap.mli	/^  val lookup: key -> 'a t -> 'a$/;"	v	Module:S
+lookup_and_remove	./lib/gMap.mli	/^  val lookup_and_remove: key -> 'a t -> 'a * 'a t$/;"	v	Module:S
+lookup_and_remove	./lib/patricia.ml	/^  let rec lookup_and_remove key = function$/;"	v
+lowest_bit	./lib/patricia.ml	/^    let lowest_bit x =$/;"	v	Module:Big
+lowest_bit	./lib/patricia.ml	/^    let lowest_bit x =$/;"	v	Module:Endianness/Little
+m	./monads.ml	/^  type 'a m = 'a LazyList.t$/;"	t
+m	./monads.ml	/^  type 'a m = 'a option$/;"	t	Module:MONAD
+m	./monads.ml	/^  type 'a m = (L.a * 'a) M.m$/;"	t
+m	./monads.ml	/^  type 'a m$/;"	t	Module:MONAD
+make	./lib/PersistentRef.ml	/^let make x { limit; heap } =$/;"	v
+make	./lib/PersistentRef.mli	/^val make: 'a -> 'a store -> location * 'a store$/;"	v
+map	./lib/LazyList.mli	/^val map : ('a -> 'b) -> 'a t -> 'b t$/;"	v
+map	./lib/gMap.mli	/^  val map: ('a -> 'b) -> 'a t -> 'b t$/;"	v	Module:S
+map	./lib/patricia.ml	/^  let map f s =$/;"	v
+mask	./lib/patricia.ml	/^    let mask i m =$/;"	v
+mask	./lib/patricia.ml	/^    type mask = int$/;"	t	Module:Big
+mask	./lib/patricia.ml	/^    type mask = int$/;"	t	Module:Endianness/Little
+mask	./lib/patricia.ml	/^    type mask = int$/;"	t	Module:Endianness/S
+mask	./lib/patricia.ml	/^    val mask: int -> mask -> int$/;"	v	Module:Endianness/S
+match_prefix	./lib/patricia.ml	/^  let match_prefix k p m =$/;"	v
+mem	./lib/gMap.mli	/^  val mem: key -> 'a t -> bool$/;"	v	Module:S
+mem	./lib/gSet.mli	/^  val mem: element -> t -> bool$/;"	v	Module:S
+mem	./lib/patricia.ml	/^  let mem k m =$/;"	v
+neq	./lib/PersistentRef.ml	/^let neq (l1 : int) (l2 : int) =$/;"	v
+neq	./lib/PersistentRef.mli	/^val neq: location -> location -> bool$/;"	v
+next	./lib/LazyList.ml	/^let next =$/;"	v
+next	./lib/LazyList.mli	/^val next : 'a t -> 'a node$/;"	v
+next	./lib/patricia.ml	/^    let rec next () =$/;"	v
+nil	./lib/LazyList.ml	/^let nil =$/;"	v
+nil	./lib/LazyList.mli	/^val nil : 'a t$/;"	v
+node	./lib/LazyList.ml	/^and 'a node =$/;"	t
+node	./lib/LazyList.mli	/^and 'a node = Nil | Cons of 'a * 'a t$/;"	t
+nothing	./monads.ml	/^  let nothing = LazyList.nil$/;"	v
+nothing	./monads.ml	/^  let nothing = None$/;"	v	Module:MONAD
+nothing	./monads.ml	/^  val nothing: 'a m$/;"	v	function:>>=
+nothing	./monads.ml	/^  val nothing: 'a m$/;"	v	function:MONAD/>>=
+nothing	./psm01option.ml	/^  let nothing = None$/;"	v	Module:Option
+one	./lib/LazyList.ml	/^let one (r: 'a): 'a t =$/;"	v
+one	./lib/LazyList.mli	/^val one : 'a -> 'a t$/;"	v
+p	./lib/patricia.ml	/^    let p = X.mask p0 (* for instance *) m in$/;"	v
+point	./lib/PersistentUnionFind.ml	/^type point =$/;"	t
+point	./lib/PersistentUnionFind.mli	/^type point$/;"	t
+premises	./proofTree.ml	/^  and premises =$/;"	t
+prove_equality	./proofSearchMonad.ml	/^let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =$/;"	v
+prove_equality	./psm02withoutBacktracking.ml	/^let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =$/;"	v
+remove	./lib/gMap.mli	/^  val remove: key -> 'a t -> 'a t$/;"	v	Module:S
+remove	./lib/gSet.mli	/^  val remove: element -> t -> t$/;"	v	Module:S
+remove	./lib/patricia.ml	/^  let remove x s =$/;"	v
+repr	./lib/PersistentUnionFind.ml	/^let rec repr x state =$/;"	v
+repr	./lib/PersistentUnionFind.mli	/^val repr: point -> 'a state -> point$/;"	v
+return	./monads.ml	/^  let return = LazyList.one$/;"	v
+return	./monads.ml	/^  let return x = M.return (L.empty, x)$/;"	v
+return	./monads.ml	/^  let return x = Some x$/;"	v	Module:MONAD
+return	./monads.ml	/^  val return: 'a -> 'a m$/;"	v
+return	./monads.ml	/^  val return: 'a -> 'a m$/;"	v	Module:MONAD
+return	./psm01option.ml	/^  let return = fun x -> Some x$/;"	v	Module:Option
+reverse	./lib/patricia.ml	/^  let reverse decision elem1 elem2 =$/;"	v
+rule	./proofTree.ml	/^  and rule =$/;"	t	Module:Make
+rule_name	./proofTree.ml	/^  and rule_name =$/;"	t	Module:Make
+same	./lib/PersistentUnionFind.ml	/^let same x y state =$/;"	v
+same	./lib/PersistentUnionFind.mli	/^val same: point -> point -> 'a state -> bool$/;"	v
+set	./lib/PersistentRef.ml	/^let set l x { limit; heap } =$/;"	v
+set	./lib/PersistentRef.mli	/^val set: location -> 'a -> 'a store -> 'a store$/;"	v
+shorter	./lib/patricia.ml	/^    let shorter =$/;"	v
+shorter	./lib/patricia.ml	/^    val shorter: mask -> mask -> bool$/;"	v	Module:Endianness/S
+singleton	./lib/gMap.mli	/^  val singleton: key -> 'a -> 'a t$/;"	v	Module:S
+singleton	./lib/gSet.mli	/^  val singleton: element -> t$/;"	v	Module:S
+solve	./proofSearchMonad.ml	/^let rec solve (env: env) (goal: formula): env outcome =$/;"	v
+solve	./psm01option.ml	/^let rec solve (env: env) (formula: formula): env option =$/;"	v
+solve	./psm02withoutBacktracking.ml	/^let rec solve (env: env) (goal: formula): env outcome =$/;"	v
+state	./lib/PersistentUnionFind.ml	/^type 'a state =$/;"	t
+state	./lib/PersistentUnionFind.mli	/^type 'a state$/;"	t
+store	./lib/PersistentRef.ml	/^type 'a store = {$/;"	t
+store	./lib/PersistentRef.mli	/^type 'a store$/;"	t
+store	./lib/PersistentUnionFind.ml	/^     let store = set rx (Link ry) !state in$/;"	v
+store	./lib/PersistentUnionFind.ml	/^     let store = set ry (Root (f descx descy)) store in$/;"	v
+strict_add	./lib/gMap.mli	/^  val strict_add: key -> 'a -> 'a t -> 'a t$/;"	v	Module:S
+strict_add	./lib/patricia.ml	/^  let rec strict_add x t =$/;"	v
+strict_add	./lib/patricia.ml	/^  let strict_add k d m =$/;"	v
+subset	./lib/gSet.mli	/^  val subset: (t -> t -> bool)$/;"	v	Module:S
+t	./lib/LazyList.ml	/^type 'a t = 'a node Lazy.t$/;"	t
+t	./lib/LazyList.mli	/^type 'a t = 'a node Lazy.t$/;"	t
+t	./lib/gMap.mli	/^  type 'a t$/;"	t	Module:S
+t	./lib/gSet.mli	/^  type t$/;"	t	Module:S
+t	./lib/patricia.ml	/^         fine_add (reverse decide) key value t$/;"	v
+t	./lib/patricia.ml	/^  type 'a t =$/;"	t	Module:Make
+tell	./monads.ml	/^  let tell log = M.return (log, ())$/;"	v
+tell	./monads.ml	/^  val tell: L.a -> unit m$/;"	v
+tl	./lib/LazyList.ml	/^let tl (l: 'a t): 'a t =$/;"	v
+tl	./lib/LazyList.mli	/^val tl : 'a t -> 'a t$/;"	v
+tree0'	./lib/patricia.ml	/^       let tree0' = endo_map f tree0 in$/;"	v
+tree1'	./lib/patricia.ml	/^       let tree1' = endo_map f tree1 in$/;"	v
+u0	./lib/patricia.ml	/^           let u0 = union s0 t0$/;"	v
+u0	./lib/patricia.ml	/^         let u0 = union s0 t0$/;"	v
+unify	./psm01option.ml	/^let unify (env: env) (v1: var) (v2: var): env option =$/;"	v
+union	./lib/PersistentUnionFind.ml	/^let union x y state =$/;"	v
+union	./lib/PersistentUnionFind.mli	/^val union: point -> point -> 'a state -> 'a state$/;"	v
+union	./lib/gMap.mli	/^  val union: 'a t -> 'a t -> 'a t$/;"	v	Module:S
+union	./lib/gSet.mli	/^  val union: t -> t -> t$/;"	v	Module:S
+union	./lib/patricia.ml	/^  let rec union s t =$/;"	v
+union	./lib/patricia.ml	/^  let union m1 m2 =$/;"	v
+union_computed	./lib/PersistentUnionFind.ml	/^let union_computed f x y state =$/;"	v
+union_computed	./lib/PersistentUnionFind.mli	/^val union_computed: ('a -> 'a -> 'a) -> point -> point -> 'a state -> 'a state$/;"	v
+update	./lib/PersistentUnionFind.mli	/^val update: ('a -> 'a) -> point -> 'a state -> 'a state$/;"	v
+valid	./lib/PersistentRef.mli	/^val valid: location -> 'a store -> bool$/;"	v
+valid	./lib/PersistentUnionFind.mli	/^val valid: point -> 'a state -> bool$/;"	v
+var	./proofSearchMonad.ml	/^  and var = P.point$/;"	t
+var	./psm01option.ml	/^and var = P.point$/;"	t
+var	./psm02withoutBacktracking.ml	/^  and var = P.point$/;"	t

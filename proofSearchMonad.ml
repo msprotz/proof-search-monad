@@ -3,7 +3,7 @@ module P = PersistentUnionFind
 module Formula = struct
   (** Formulas *)
 
-  (* Conjunctions and disjunction of variables. *)
+  (* Conjunctions and disjunction of equalities between variables. *)
   type formula =
     | Equals of var * var
     | And of formula * formula
@@ -58,7 +58,7 @@ let name v env =
 
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
- * unifies with a rigid instantiates onto that rigid. *)
+ * unifies with a rigid and instantiates onto that rigid. *)
 let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =
   match find v1 env, find v2 env with
   | Flexible, Flexible
@@ -130,9 +130,8 @@ module Test = struct
       indent ^ "prove " ^ p_formula goal ^
         if List.length premises > 0 then
           " using [" ^ p_rule rule_name ^
-          "] (\n" ^
-            String.concat "\n" (List.map (p (indent ^ "  ")) premises) ^ "\n" ^
-          indent ^ ")"
+          "]\n" ^
+            String.concat "\n" (List.map (p (indent ^ "| ")) premises)
         else
           " using axiom [" ^ p_rule rule_name ^ "]"
     in
@@ -143,7 +142,8 @@ module Test = struct
     match M.extract d with
     | Some (_env, d) ->
         assert b;
-        print_endline (print_derivation env d)
+        print_endline (print_derivation env d);
+        print_newline ()
     | None ->
         assert (not b);
         print_endline "fail"
@@ -161,7 +161,8 @@ module Test = struct
      * failed). *)
     let g2 = And (Equals (x, z), Equals (y, z)) in
     (* Example 3: « (x = z \/ z = z) ». This one requires search but no
-     * backtracking. *)
+     * backtracking, meaning it will fail with [MOption] but succeed with
+     * [MExplore]. *)
     let g3 = Or (Equals (x, z), Equals (z, z)) in
     (* Example 4: « (?y = x \/ ?y = z) /\ ?y = z ». This one backtracks. *)
     let g4 = And (Or (Equals (y, x), Equals (y, z)), Equals (y, z)) in

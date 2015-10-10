@@ -115,6 +115,7 @@ module Make(F: FORMULA)(M: MONAD) = struct
   let fail: 'a outcome =
     M.nothing
 
+  (* Multiple choices -- may or may not backtrack, depending on [M]. *)
   let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
     M.search (fun (r, x) -> prove goal r (f x)) args
 end
