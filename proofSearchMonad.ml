@@ -26,7 +26,8 @@ module Formula = struct
 end
 
 (* [MExplore] and [MOption] both work here. *)
-module ProofMonad = Monads.Make(Formula)(Monads.MExplore)
+module M = Monads.MExplore
+module ProofMonad = Monads.Make(Formula)(M)
 
 open ProofMonad
 open Formula
@@ -90,8 +91,8 @@ let rec solve (env: env) (goal: formula): env outcome =
 
 module Test = struct
 
-  let is_Cons x = LazyList.(next x <> Nil)
-  let is_Nil x = LazyList.(next x = Nil)
+  let is_Cons x = M.extract x <> None
+  let is_Nil x = M.extract x = None
 
   let _ =
     let env = empty in
@@ -104,11 +105,15 @@ module Test = struct
      * premise of the conjunction is not even evaluated (since the first one
      * failed). *)
     let g2 = And (Equals (x, z), Equals (y, z)) in
+    (* Example 4: « (x = z \/ z = z) ». This one requires search but no
+     * backtracking. *)
+    let g3 = Or (Equals (x, z), Equals (z, z)) in
     (* Example 3: « (?y = x \/ ?y = z) /\ ?y = z ». This one backtracks. *)
-    let g3 = And (Or (Equals (y, x), Equals (y, z)), Equals (y, z)) in
+    let g4 = And (Or (Equals (y, x), Equals (y, z)), Equals (y, z)) in
     assert (is_Cons (solve env g1));
     assert (is_Nil (solve env g2));
     assert (is_Cons (solve env g3));
+    assert (is_Cons (solve env g4));
     ()
 
 end

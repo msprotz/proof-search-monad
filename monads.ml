@@ -7,23 +7,11 @@ module type MONAD = sig
   val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
 
   val nothing: 'a m
-  val of_list: 'a m list -> 'a m
+  val extract: 'a m -> 'a option
+  val search: ('a -> 'b m) -> 'a list -> 'b m
 end
 
-module type MONOID = sig
-  type a
-  val empty: a
-  val append: a -> a -> a
-end
-
-module MOption: sig
-  type 'a m = 'a option
-  val return: 'a -> 'a m
-  val bind: 'a m -> ('a -> 'b m) -> 'b m
-  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
-  val nothing: 'a m
-  val of_list: 'a m list -> 'a m
-end = struct
+module MOption: MONAD with type 'a m = 'a option = struct
   type 'a m = 'a option
   let return x = Some x
   let bind x f =
@@ -32,27 +20,36 @@ end = struct
     | None -> None
   let ( >>= ) = bind
   let nothing = None
-  let rec of_list = function
-    | Some x :: _ -> Some x
-    | None :: xs -> of_list xs
+  let extract x = x
+  let rec search f l =
+    match l with
     | [] -> None
+    | x :: xs ->
+        match f x with
+        | Some x -> Some x
+        | None -> search f xs
 end
 
-module MExplore: sig
-  type 'a m = 'a LazyList.t
-  val return: 'a -> 'a m
-  val bind: 'a m -> ('a -> 'b m) -> 'b m
-  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m
-  val nothing: 'a m
-  val of_list: 'a m list -> 'a m
-end = struct
-  type 'a m = 'a LazyList.t
-  let return = LazyList.one
+module MExplore: MONAD with type 'a m = 'a LazyList.t = struct
+  open LazyList
+  type 'a m = 'a t
+  let return = one
   let bind x f =
-    LazyList.flattenl (LazyList.map f x)
+    flattenl (map f x)
   let ( >>= ) = bind
-  let nothing = LazyList.nil
-  let of_list = LazyList.flatten
+  let nothing = nil
+  let extract x =
+    match next x with
+    | Nil -> None
+    | Cons (x, _) -> Some x
+  let search f l =
+    bind (of_list l) f
+end
+
+module type MONOID = sig
+  type a
+  val empty: a
+  val append: a -> a -> a
 end
 
 module WriterT (M: MONAD) (L: MONOID): sig
@@ -84,7 +81,7 @@ module Make(F: FORMULA)(M: MONAD) = struct
   module Proofs = ProofTree.Make(F)
 
   (* The monoid of derivation lists. *)
-  module L = struct
+  module L: MONOID with type a = Proofs.derivation list = struct
     type a = Proofs.derivation list
     let empty = []
     let append = List.append
@@ -119,5 +116,5 @@ module Make(F: FORMULA)(M: MONAD) = struct
     M.nothing
 
   let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
-    M.of_list (List.map (fun (r, x) -> prove goal r (f x)) args)
+    M.search (fun (r, x) -> prove goal r (f x)) args
 end
