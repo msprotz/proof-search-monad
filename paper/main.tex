@@ -1,79 +1,309 @@
-\documentclass{sigplanconf}
+\documentclass{easychair}
 
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\usepackage{amstext}
+\usepackage{amsthm}
+\usepackage{hyperref}
+
 \usepackage{tabularx}
 \usepackage{listings}
-\lstset{
-  language=caml,
-  basicstyle=\ttfamily,
-}
-\def\li{\lstinline}
+  \def\li{\lstinline}
+  \lstset{
+    language=caml,
+    flexiblecolumns=false,
+    showstringspaces=false,
+    basicstyle=\ttfamily,
+    framesep=5pt,
+    numberstyle=\tiny,
+    numbersep=5pt,
+    escapeinside={(*}{*)},
+    morekeywords={above,abstract,adopts,alias,and,as,assert,begin,below,builtin,consumes,data,do,downto,duplicable,dynamic,else,empty,end,exclusive,explain,fact,fail,flex,for,from,fun,give,if,in,let,match,mutable,open,pack,perm,preserving,rec,take,taking,then,to,type,unknown,val,value,while,with,witness},
+    deletekeywords={value},
+  }
+\usepackage{minted}
+  \newminted[ocaml]{ocaml}{mathescape}
+\usepackage{mathpartir}
+  % Improvements to Didier's mathpartir package: make all rule names and
+  % references use textsc, and also make references to rules done using the \Rule
+  % command clickable in a PDF.
+  \let\TirName\textsc
+  \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
+  \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
+  \let\DefRule\RefTirName
+  \let\Rule\DefTirName
 
+
+\newcommand{\fref}[1]{Figure~\ref{fig:#1}}
+\newcommand{\R}{\ensuremath{\mathcal{R}}} % Rigid
+\newcommand{\f}[1]{\ensuremath{\mathbf{#1}}} % Bold
+\newcommand{\F}{\ensuremath{\mathcal{F}}} % Flexible
+\newcommand{\V}{\ensuremath{\mathcal{V}}} % The prefix
 
 \begin{document}
 
-\special{papersize=8.5in,11in}
-\setlength{\pdfpageheight}{\paperheight}
-\setlength{\pdfpagewidth}{\paperwidth}
+\title{Functional Pearl: the Proof Search Monad}
+\titlerunning{The Proof Search Monad}
 
-\conferenceinfo{CONF 'yy}{Month d--d, 20yy, City, ST, Country}
-\copyrightyear{20yy}
-\copyrightdata{978-1-nnnn-nnnn-n/yy/mm}
-\doi{nnnnnnn.nnnnnnn}
-
-% Uncomment one of the following two, if you are not going for the
-% traditional copyright transfer agreement.
-
-%\exclusivelicense                % ACM gets exclusive license to publish,
-                                  % you retain copyright
-
-%\permissiontopublish             % ACM gets nonexclusive license to publish
-                                  % (paid open-access papers,
-                                  % short abstracts)
-
-\titlebanner{banner above paper title}        % These are ignored unless
-\preprintfooter{short description of paper}   % 'preprint' option specified.
-
-\title{Function pearl: the proof search monad}
-\subtitle{Subtitle Text, if any}
-
-\authorinfo{Jonathan Protzenko}
-           {Microsoft Research}
-           {protz@microsoft.com}
+\author{Jonathan Protzenko}
+\authorrunning{J. Protzenko}
+\institute{
+  Microsoft Research\\
+  \email{protz@microsoft.com}}
 
 \maketitle
 
 \begin{abstract}
-  We present the proof search monad: the combination of the option monad, the
-  backtracking monad, and the sequencing monad. The proof search monad allows
-  writing a proof search engine that looks like the actual derivation rules,
-  while generating a proof tree at the same time.
+  We present the proof search monad, a set of combinators that allows one to
+  write a proof search engine in a style that resembles closely the inference
+  rules. The user calls functions such as \li+premise+, \li+prove+ or
+  \li+choice+; the library then takes care of generating a derivation tree,
+  which serves either as a witness (success) or as an error message (failure).
+  Proof search engines written in this style enjoy: first, a one-to-one
+  correspondence between the implementation and the theoretical rules, which
+  makes manual inspection easier; second, proof witnesses ``for free'', which
+  makes a verified-validation approach easier too.
 \end{abstract}
 
-\category{CR-number}{subcategory}{third-level}
+\section{A minimal problem}
 
-% general terms are not compulsory anymore,
-% you may leave them out
-\terms
-term1, term2
+We consider conjunctions of equalities of the form
+$\V x_1, \ldots, \V x_n.\ \bigwedge_k x_i = x_j$, that is, conjunctions of
+equalities between variables. Some variables are \emph{flexible}, meaning they may be
+substituted for other variables. Their binder $\V x_i$ is of the form $\F \f
+x_i$ (and their are typeset in bold font). Other variables are \emph{rigid}, and
+may not be substituted. Their binder $\V x_i$ is of the form $\R x_i$. The
+problem consists in computing a substitution of \emph{flexible} variables that
+evaluate the conjunction to \li+true+. If no such substitution exists, the
+solver outputs nothing.
 
-\keywords
-keyword1, keyword2
+For instance, one may want to solve: $\R x, \R z, \F \f y.\ x = \f y \wedge z = z$.
+A solution exists: the solver outputs $\sigma = \{ \f y \mapsto x \}$ as a valid
+substitution that solves the input problem. However, if one attempts to solve:
+$\R x, \R z, \F \f y.\ x = \f y \wedge \f y = z$, the solver fails to find a
+proper substitution, and return nothing. Indeed, the first clause demands that
+$\f y$ substitutes to $x$, meaning that the second clause becomes $x = z$, which
+always evaluates to false ($x$ and $z$ are two distinct rigid variables).
 
-\section{Conjunctions of equalities}
+In proof search, rigid variables stem from the right-elimination of universal
+quantifiers, or left-elimination of existential quantifiers, which both result
+in abstract variables. When left-eliminating a universal quantifier
+(respectively right-eliminating an existential quantifier), one must provide an
+argument to the type application (resp. an existential witness). If the argument
+(resp. the witness) cannot be found on the spot, one typically uses
+\emph{flexible variables}, which allow the proof search procedure to
+\emph{defer} the choice until a later point in search (where the choice may be
+guessed). Flexible variables are thus an \emph{implementation technique}.
 
-Just the regular option monad. Lazyness is already built-in (the second
-computation is suspended).
+In order to simplify the discussion, we skip elimination rules and quantifiers
+altogether, and just assume that our input problem contains a combination of
+flexible and rigid variables. Furthermore, we assume that any instantiation of a
+flexible variable is legal. The only crucial point is that the solver outputs
+something.
 
-In this first version, we treat the simple problem of conjunction of
-equalities\dots written in an elegant style with a persistent union-find,
-functional, the option monad, because we may fail.
+(The library that we describe here has been used in the implementation of the
+Mezzo type-checker. There, all introduction and elimination rules are present;
+furthermore, the implementation uses \emph{levels} to guarantee that only sound
+instantiation choices are performed. This is, however, orthogonal to the present
+discussion; the minimal problem we consider already conveys all the important
+points, so we will skip quantifiers in the remainder of the discussion.)
 
-Lazyness already built-in, evaluation stops right after the first failing
-premise has been hit.
+Solving conjunctions of equalities requires three rules, which make up our
+logic (\fref{proof-system}). \Rule{Refl} embodies the reflexivity axiom; \Rule{And}
+highlights that the proof produces an \emph{output} $V'$ which is \emph{chained}
+from one premise to another; \Rule{Inst} embodies the ``instantiation''
+mechanism: in essence, if $y$ has not been instantiated so far, one
+may instantiate it onto any other variable and perform the substitution in order
+to prove the goal ($[\f y/x] P$ stands for ``replace $y$ with $x$ in $P$'').
 
-Goal: build a derivation tree at the same time. Requires: recording the
-premises, in order to build an application of the rule.
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule[Refl]{
+      \quad
+    }{
+      V \vdash x = x \dashv V
+    }
+
+    \inferrule[Inst]{
+      x \in V_i \\
+      V_1, \F(\f y = x), V_2 \vdash [\f y/x] P \dashv V'
+    }{
+      V_1, \F(\f y), V_2 \vdash P \dashv V'
+    }
+
+    \inferrule[And]{
+      V \vdash P \dashv V' \\
+      V' \vdash Q \dashv V''
+    }{
+      V \vdash P \wedge Q \dashv V''
+    }
+  \end{mathpar}
+  \caption{Proof rules for the first system}
+  \label{fig:proof-system}
+\end{figure}
+
+Once the proof tree has been laid out, one obtains an output (e.g. $V''$ in
+\Rule{And}) where the instantiation choices (e.g. $\F (\f x_i = x_j)$) determine
+the desired substitution (e.g. $\sigma = \{ \f x_i \mapsto x_j \}^*$).
+
+\begin{figure}
+  \centering
+  \begin{ocaml}
+type formula =                and descr =
+| Equals of var * var           | Flexible
+| And of formula * formula      | Rigid
+
+and var = P.point             and env = descr P.state
+  \end{ocaml}
+  \caption{Formulas and environments}
+  \label{fig:formulas}
+\end{figure}
+
+We implement proof search in OCaml (\fref{formulas}). The data type of formulas
+is self-explanatory. Variables are implemented as equivalence classes in a
+\emph{persistent} union-find data structure, which the module \li+P+ implements.
+The $V$ parameter in our rules is embodied by the \li+env+ type
+(``environment''), which is an input and an output to the solver. An
+\li+env+ represents a given state of the union-find data structure, that is, a
+set of equations between variables. This is another way of representing a
+substitution, i.e. this is what we want our solver to compute.
+
+The choice of a persistent union-find is irrelevant. All that matters is that we
+pick a data structure that models substitutions, and that is \emph{persistent}.
+Had we picked an explicit substitution instead of a union-find, the rest of the
+discussion would have been the same.
+
+\fref{solver} implements a solver for our minimal problem; written within the
+\li+MOption+ monad, it returns either \li+Some env+ (in case a successful
+substitution has been found), or \li+None+ if no solution exists. The solver is
+complete.
+
+\begin{figure}
+  \centering
+  \begin{ocaml}
+module MOption = struct
+  (* defines [return], [nothing] and [>>=] *)
+end
+
+let unify env v1 v2 =                         let rec solve env formula =
+  match P.find v1 env, P.find v2 env with       match formula with
+  | Flexible, Flexible                          | Equals (v1, v2) ->
+  | Flexible, Rigid ->                              unify env v1 v2
+      return (P.union v1 v2 env)                | And (f1, f2) ->
+  | Rigid, Flexible ->                              solve env f1 >>= fun env ->
+      return (P.union v2 v1 env)                    solve env f2
+  | Rigid, Rigid ->
+      if P.same v1 v2 env then
+        return env
+      else
+        nothing
+  \end{ocaml}
+  \caption{Solver for the simplified problem}
+  \label{fig:solver}
+\end{figure}
+
+The solver uses \li+MOption.>>=+ to sequence premises in the \li+And+ case. It
+doesn't keep track of premises; it just ensures (thanks to \li+>>=+) that if the
+first premise evaluates to \li+nothing+, the second premise is not evaluated,
+since it is suspended behind a \li+fun+ expression (OCaml is a strict language).
+
+\section{Building derivations}
+
+There are two shortcomings with this solver. First, the \li+unify+ sub-routine
+conflates several rules of the logic together. Indeed, the \li+return (P.union ...)+
+expression hides a combination of \Rule{Inst} and \Rule{Refl}. Second, we
+have no way to replay the proof to verify it independently. One may argue that
+in this simplified example, one can just apply the substitution to the original
+formula and verify that all the clauses are of the form $x = x$, without the
+need for a proof tree. In the general case, however, the proof tree contains the
+elimination witnesses for quantifiers; this allows one to independently verify a
+proof without relying on inference techniques, such as flexible variables.
+
+\subsection{Defining proof trees}
+
+One way to make the solver better is to make sure each step it performs
+corresponds in an obvious manner to the application of an admissible rule. To
+that effect, we define the data type of all three rules in our system, which we
+apply to the functor of \emph{proof trees} (\fref{proof-trees}).
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+module type LOGIC = sig     module MakeProofTree (L: LOGIC) = struct
+  type formula                type derivation = L.formula * rule
+  type rule_name              and rule = L.rule_name * premises
+end                           and premises = Premises of derivation list
+                            end 
+
+module MyLogic = struct
+  type formula = ... (* as before *)
+  type rule_name = R_And | R_Refl | R_Inst
+end
+module MyProofTree = MakeProofTree(MyLogic)
+\end{ocaml}
+  \caption{The functor of proof trees}
+  \label{fig:proof-trees}
+\end{figure}
+
+A \li+derivation+ tree is a pair of a \li+formula+ (the goal we wish the prove)
+and a \li+rule+ (that we apply in order to prove the goal). A \li+rule+ has a name
+and \li+premises+; the \li+premises+ type is simply a \li+derivation list+ (the
+\li+Premises+ constructor is here to prevent a non-constructive type
+abbreviation). When using the library, the client is expected to make sure
+that each \li+rule_name+ is paired with the proper
+number of premises (0 for \Rule{Refl}, 1 for
+\Rule{Inst} and 2 for \Rule{And}); this is not enforced by the type system.
+
+In the (simplified) sketch from \fref{proof-trees}, rule names are just constant
+constructors, since the rule parameters (such as $x$ and $\f y$ in \Rule{Inst})
+can be recovered from the \li+formula+. In the general case, the various
+constructors of \li+rule_name+ do have parameters that record how one specific
+rule was instantiated.
+
+\subsection{Proof tree combinators}
+
+We previously used the \li+>>=+ operator from the \li+MOption+ monad in order to
+chain premises (\fref{solver}). We now need a new operator, that not only
+\emph{binds} the result (i.e. stops evaluating premises after a failure, as
+before), but also \emph{records} the premises in sequence, in order to build a
+proper derivation. The former is still faithfully implemented by the option
+monad; the latter is implemented by the writer monad.
+
+Computations in the writer monad return a result (of type \li+'a+) along with a log of
+elements (of type \li+L.a+). The (usual) \li+>>=+ and \li+return+ combinators operate on
+the result part of the computation, while the (new) \li+tell+ combinator
+operates on the logging part of the computation. This \li+tell+ combinator
+appends a new element to the log. Appending elements to the log is done by way of the \li+MONOID+
+module type, which essentially demands a value for the empty log, and a function to
+append new entries into the log.
+
+In order to get a new \li+>>=+ operator that combines the features of
+the option and writer monads, we apply the \li+WriterT+ monad transformer to the
+\li+MOption+ monad (\fref{writer}) and obtain \li+MWriter+, a monad whose
+computations represent a sequence of derivations (the premises we have proved so far)
+along with a result (the \li+env+ that we chain through the premises). These
+computations are wrapped in \li+MOption.m+, that is, are wrapped within an
+\li+option+ to account for a possible proof failure.
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+module WriterT (M: MONAD) (L: MONOID): sig      module L = struct
+  type 'a m = (L.a * 'a) M.m                      type a = MyProofTree.derivation list
+  val return: 'a -> 'a m                          let empty = []
+  val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m       let append = List.append
+                                                end
+  val tell: L.a -> unit m
+end = ...
+
+module MWriter = WriterT(MOption)(L)
+\end{ocaml}
+  \caption{The writer monad transformer}
+  \label{fig:writer}
+\end{figure}
+
 
 \bibliographystyle{abbrvnat}
 \bibliography{local}

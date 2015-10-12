@@ -77,8 +77,8 @@ end = struct
   let ( >>= ) = bind
 end
 
-module Make(F: FORMULA)(M: MONAD) = struct
-  module Proofs = ProofTree.Make(F)
+module Make(Logic: LOGIC)(M: MONAD) = struct
+  module Proofs = ProofTree.Make(Logic)
 
   (* The monoid of derivation lists. *)
   module L: MONOID with type a = Proofs.derivation list = struct

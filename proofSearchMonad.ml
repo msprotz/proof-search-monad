@@ -25,6 +25,13 @@ module Formula = struct
   and var = P.point
 
   and env = descr P.state
+
+  type rule_name =
+    | R_And
+    | R_Instantiate
+    | R_Refl
+    | R_OrL
+    | R_OrR
 end
 
 (* [MExplore] and [MOption] both work here. *)

@@ -1,24 +1,20 @@
-module type FORMULA = sig
+module type LOGIC = sig
   type formula
+  type rule_name
 end
 
 (* The proof tree for a certain type of logical formulas. *)
-module Make = functor (F: FORMULA) -> struct
+module Make = functor (L: LOGIC) -> struct
   type derivation =
     goal * rule
 
   and goal =
-    F.formula
+    L.formula
 
   and rule =
     rule_name * premises
 
-  and rule_name =
-    | R_And
-    | R_Instantiate
-    | R_Refl
-    | R_OrL
-    | R_OrR
+  and rule_name = L.rule_name
 
   and premises =
     (* Useless constructor to avoid creating a cyclic type abbreviation. *)
