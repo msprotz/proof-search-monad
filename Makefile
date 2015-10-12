@@ -1,6 +1,6 @@
 .PHONY: all tags
 
-FILES=example01 example02 #example03
+FILES=example01 example02 example03
 
 all:
 ifeq ($(OS),Windows_NT)

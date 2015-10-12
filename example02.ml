@@ -40,8 +40,8 @@ end
 (* [MExplore] and [MOption] both work here; only [MExplore] implements
  * backtracking. Switch to [MOption] to get the implementation at the end of §2
  * in the paper. *)
-module M = Combinators.MExplore
-module ProofMonad = Combinators.Make(Formula)(M)
+module M = Combinators2.MExplore
+module ProofMonad = Combinators2.Make(Formula)(M)
 
 open ProofMonad
 open Formula
