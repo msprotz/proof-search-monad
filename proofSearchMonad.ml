@@ -63,6 +63,8 @@ let name v env =
       "?" ^ name
 
 
+let qed r e = return (e, r)
+
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
  * unifies with a rigid and instantiates onto that rigid. *)
@@ -71,15 +73,15 @@ let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =
   | Flexible, Flexible
   | Flexible, Rigid ->
       let env = P.union v1 v2 env in
-      prove goal R_Instantiate begin
+      prove goal begin
         premise (prove_equality env goal v1 v2) >>=
-        return
+        qed R_Instantiate
       end
   | Rigid, Flexible ->
       let env = P.union v2 v1 env in
-      prove goal R_Instantiate begin
+      prove goal begin
         premise (prove_equality env goal v2 v1) >>=
-        return
+        qed R_Instantiate
       end
   | Rigid, Rigid ->
       if P.same v1 v2 env then
@@ -95,15 +97,15 @@ let rec solve (env: env) (goal: formula): env outcome =
   | Equals (v1, v2) ->
       prove_equality env goal v1 v2
   | And (g1, g2) ->
-      prove goal R_And begin
+      prove goal begin
         premise (solve env g1) >>= fun env ->
         premise (solve env g2) >>=
-        return
+        qed R_And
       end
   | Or (g1, g2) ->
-      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun g ->
+      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun (side, g) ->
         premise (solve env g) >>=
-        return
+        qed side
       )
 
 

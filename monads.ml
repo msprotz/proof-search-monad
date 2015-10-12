@@ -102,19 +102,19 @@ module Make(Logic: LOGIC)(M: MONAD) = struct
 
   (* Equivalent of [runMProof]: collect the premises in order to compute the
    * outcome. *)
-  let prove (goal: goal) (rule: rule_name) (x: 'a m): 'a outcome =
-    M.(x >>= fun (premises, env) ->
+  let prove (goal: goal) (x: ('a * rule_name) m): 'a outcome =
+    M.(x >>= fun (premises, (env, rule)) ->
       return (env, (goal, (rule, Premises premises))))
 
   (* Create an outcome from an axiom. *)
   let axiom (env: 'a) (goal: goal) (axiom: rule_name): 'a outcome =
-    prove goal axiom (return env)
+    prove goal (return (env, axiom))
 
   (* The failed outcome. *)
   let fail: 'a outcome =
     M.nothing
 
   (* Multiple choices -- may or may not backtrack, depending on [M]. *)
-  let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
-    M.search (fun (r, x) -> prove goal r (f x)) args
+  let choice (goal: goal) (args: 'a list) (f: 'a -> ('b * rule_name) m): 'b outcome =
+    M.search (fun x -> prove goal (f x)) args
 end

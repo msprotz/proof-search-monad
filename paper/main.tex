@@ -28,14 +28,16 @@
   % Improvements to Didier's mathpartir package: make all rule names and
   % references use textsc, and also make references to rules done using the \Rule
   % command clickable in a PDF.
-  \let\TirName\textsc
-  \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
-  \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
-  \let\DefRule\RefTirName
-  \let\Rule\DefTirName
+  % \let\TirName\textsc
+  % \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
+  % \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
+  % \let\DefRule\RefTirName
+  % \let\Rule\DefTirName
+  \let\Rule\textsc
 
 
 \newcommand{\fref}[1]{Figure~\ref{fig:#1}}
+\newcommand{\sref}[1]{Section~\ref{sec:#1}}
 \newcommand{\R}{\ensuremath{\mathcal{R}}} % Rigid
 \newcommand{\f}[1]{\ensuremath{#1^?}} % Bold
 \newcommand{\F}{\ensuremath{\mathcal{F}}} % Flexible
@@ -65,63 +67,79 @@
   makes a verified, independent validation approach easier too.
 \end{abstract}
 
-\section{A minimal problem}
+\section{Theory and practice}
 
-We consider conjunctions of equalities of the form
-$\bigwedge_k x_i = x_j$, that is, conjunctions of
-equalities between variables. Some variables are \emph{flexible}, meaning they may be
-substituted with other variables. They are typeset as follows: $\f y$.
-Rigid variables may not be substituted. They are typeset as follows: $x$. The
-problem consists in computing a substitution of \emph{flexible} variables so that
-the conjunction evaluates to \li+true+. If no such substitution exists, the
-solver outputs nothing.
+\subsection{A minimal theory}
 
-For instance, one may want to solve: $x = \f y \wedge z = z$.
-A solution exists: the solver outputs $\sigma = \{ \f y \mapsto x \}$ as a valid
-substitution that solves the input problem. However, if one attempts to solve:
-$x = \f y \wedge \f y = z$, the solver fails to find a
-proper substitution, and return nothing. Indeed, the first clause demands that
-$\f y$ substitutes to $x$, meaning that the second clause becomes $x = z$, which
-always evaluates to false ($x$ and $z$ are two distinct rigid variables).
+We are concerned with proving the validity of logical formulas; that is, with
+writing a search procedure that determines whether a given goal is satisfiable.
+To get started, we consider a system made up of conjunctions of equalities,
+along with existential quantifiers. Any free variables are assumed to be
+universally quantified. For instance, one may want to prove the following
+formula:
 
-In proof search, rigid variables stem from the right-elimination of universal
-quantifiers, or left-elimination of existential quantifiers, which both result
-in abstract variables. When left-eliminating a universal quantifier
-(respectively right-eliminating an existential quantifier), one must provide an
-argument to the type application (resp. an existential witness). If the argument
-(resp. the witness) cannot be found on the spot, one typically uses
-\emph{flexible variables}, which allow the proof search procedure to
-\emph{defer} the choice until a later point in search (where the choice may be
-guessed). Flexible variables are thus an \emph{implementation technique}.
+\begin{equation}
+  \exists y.\ x = y
+  \label{ex1}
+\end{equation}
 
-In order to simplify the discussion, we skip elimination rules and quantifiers
-altogether, and just assume that our input problem contains a combination of
-flexible and rigid variables. Furthermore, we assume that any instantiation of a
-flexible variable is legal. The only point that matters is that the solver
-computes a result which sequenced throughout the proof search.
+In order to show the validity of this judgement, one will build a proof
+derivation using the rules from the logic, shown in \fref{logic} ($[x/y]P$ means
+``substitute $x$ with $y$ in $P$''). For instance, proving Equation \ref{ex1}
+requires applying \Rule{ExistsE}, then \Rule{Refl}.
 
-(The library that we describe here has been used in the implementation of the
-Mezzo type-checker. There, the logic (the type system) does have all four
-introduction and elimination rules; in the implementation, we used \emph{levels}
-to guarantee that only sound instantiation choices are performed. This is,
-however, orthogonal to the present discussion; the minimal problem we consider
-already conveys all the important points, so we skip quantifiers in the
-remainder of the discussion.)
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule[Refl]{
+      \quad
+    }{
+      x = x
+    }
 
-\fref{proof-system} describes a proof search procedure for conjunctions of
-equalities. Rules poke at a set of variables $V$ to tell apart rigid variables from
-flexible variables. Each rule takes a substitution $\sigma$ as an input, and outputs
-an updated substitution $\sigma'$. A variable in $V$ is either a rigid ($x$),
-or a flexible ($\f y$).
+    \inferrule[And]{
+      P \\ Q
+    }{
+      P \wedge Q
+    }
 
-\Rule{Refl} embodies the reflexivity axiom; \Rule{And}
-highlights that the first sub-goal (premise) produces an \emph{output} $V'$
-which is then \emph{chained}
-from one premise to another; \Rule{Inst} embodies the ``instantiation''
-mechanism: in essence, if $\f y$ has not been instantiated so far, one
-may instantiate it onto any other variable (rigid or flexible), i.e. add a new
-entry for $\f y$ in the substitution. Finally, \Rule{Subst} may apply the
-substitution at any time in order to prove the goal.
+    \inferrule[ExistsE]{
+      [x/y]P
+    }{
+      \exists y.\ P
+    }
+  \end{mathpar}
+  \caption{A simple logic}
+  \label{fig:logic}
+\end{figure}
+
+These rules embody the Truth of our logic, i.e. an omniscient reader may use
+them to show with absolute certainty that a given formula is true.
+%
+However, if one wants to algorithmically determine whether a given formula is
+true, \Rule{ExistsE} is useless. Indeed, unless the algorithm (solver) is
+equipped with superpowers, it cannot magically guess, out of the blue, a
+suitable $x$ in \Rule{ExistsE} that will ensure the remainder of the derivation
+succeeds. To put it another way, $x$ is a free variable (a parameter) of
+\Rule{ExistsE}; the whole point of writing a proof search algorithm is to 1)
+find that \Rule{ExistsE} is the right rule to apply, and 2) find that $x$ is a
+suitable value for instantiating $y$, because it will make $y = x$ succeed.
+
+Hence, in order to build a \emph{search procedure} for that logic, one will
+use another set of \emph{algorithmic} rules, which hopefully enjoy:
+\begin{description}
+  \item[soundness]: if the algorithmic rules succeed, then there exists a
+    derivation in the logic that proves the validity of the original formula,
+    and
+  \item[completeness]: if the algorithmic rules fail, then there exists no
+    derivation in the logic that would prove the validity of the original
+    formula.
+\end{description}
+
+For instance, in our logic of existentially-quantified conjunctions of
+equalities, one may want to use the algorithmic rules from
+\fref{proof-system}. These rules differ from \fref{logic} in that they are
+algorithmic; they take an input and return an output.
 
 \begin{figure}
   \centering
@@ -151,16 +169,99 @@ substitution at any time in order to prove the goal.
     }{
       V \vdash P \wedge Q \dashv \sigma''
     }
+
+    \inferrule[ExistsE]{
+      V \uplus \f y, \sigma \vdash P \dashv \sigma'
+    }{
+      V, \sigma \vdash \exists y.\ P \dashv \sigma'_{|V}
+    }
   \end{mathpar}
-  \caption{Semi-algorithmic proof rules}
+  \caption{Algorithmic proof rules}
   \label{fig:proof-system}
 \end{figure}
 
-Once the proof tree has been laid out, one obtains an output (e.g. $\sigma''$ in
-\Rule{And}). Since flexible variables may instantiate onto other flexible
-variables, one may need to apply the substitution several times. The reflexive-transitive
-closure of $\sigma$, i.e. $\sigma^*$, is thus the desired result of the proof
-search.
+In particular, in order to determine suitable values for the $x$ parameter in
+\Rule{ExistsE}, the implementation reasons in terms of substitutions. $V$ is a
+set of variables which may be substituted (recall that free variables are
+considered universally quantified, hence not eligible for substitution);
+variables that may be substituted are typeset as $\f y$.
+The algorithm has internal state, that is, it carries a substitution $\sigma$.
+Upon hitting an existential quantifier $\f y$, the algorithmic rules
+\emph{open} $\f y$ and mark it as eligible for substitution. Later on (for
+instance, upon hitting $\f y = x$), the algorithm may pick a
+substitution for $\f y$ using \Rule{Inst}. A substitution may be applied at any
+time (\Rule{Subst}). The preconditions of \Rule{Inst} guarantee that the
+algorithm makes at most one choice for instantiating $\f y$.
+
+In other words, the algorithmic rules \emph{defer} the \emph{instantiation} of
+the existential quantifier until the shape of the proof obligation gives us a
+\emph{hint} as to what exactly this instantiation should be. This
+\emph{implementation technique} is known as \emph{flexible variables}.
+
+The new algorithmic rules differ from the original logical rules significantly;
+first, there are five rules for the algorithmic system, compared to just three
+for the logical system. Second, these five rules do not map trivially to their
+counterparts in the logical system. Third, these rules are only
+algorithmic; the implementation that we are about to roll out uses an
+optimized representation for substitutions (union-find), meaning that one not
+only needs to check that the algorithmic rules are faithful to the logical
+rules, but also that the implementation is faithful to the algorithmic rules.
+
+This paper presents a library that allows one to write an implementation of the
+algorithmic rules while automatically generating a derivation. The library
+forces the client code to lay out premises, rule applications and
+instantiations. The level of detail of the resulting derivation is left up to
+the client code; they may wish to record the very compact rules from the logic,
+or record more proof steps using the algorithmic rules. In any case, the
+derivation serves as a proof witness; if the user wishes to do so, they can
+write a validator that takes the witness and verifies that the derivation is,
+indeed, correct.
+
+The library has been used, in a preliminary form, to implement the core of the
+Mezzo type-checker. This paper presents a cleaned-up, isolated version of this
+library.
+
+\subsection{An implementation with flexible variables and union-find}
+
+The logic we present is a much simplified version of the logic (type system)
+of Mezzo. In particular, this paper only mentions the right-exists quantifier;
+Mezzo has all four possible combinations of left/right exists/forall. Generally,
+in proof search, \emph{flexible variables} stem from the right-elimination of
+existential quantifiers, or the left-elimination of universal quantifiers. The
+right-elimination of universal quantifiers, or the left-elimination of
+existential quantifiers give rise to universally-quantified variables, which are
+called \emph{rigid}.
+
+In order to simplify the problem, we assume that all existential variables have
+been introduced as flexible variables already. That way, we won't be
+sidetracked, talking about binders and the respective merits of De Bruijn
+\emph{vs.} locally nameless. Furthermore, we assume that all instantiations of
+flexible variables are legal. This is not true in general: for instance, if the
+goal is $\forall x, \exists \f y, \forall z.\ P$, picking $\f y = z$ makes no
+sense. Mezzo forbids this choice using \emph{levels}; in the present document,
+we skip this discussion altogether and assume that ``all is well''. Finally,
+although in a general setting, several rules may trigger for a given goal (this
+is the case in Mezzo), the algorithmic set of rules we use is syntax-driven: the
+syntactic shape of the goal determines which rule should be applied.
+
+We thus restrict our formulas to conjunctions of equalities between variables.
+The plan is to write a solver that takes,
+as an input, a formula, and outputs a valid substitution, if any. That is,
+write an algorithm that abides by the rules from \fref{proof-system}.
+For instance, one may want to solve: $x = \f y \wedge z = z$.
+A solution exists: the solver outputs $\sigma = \{ \f y \mapsto x \}$ as a valid
+substitution that solves the input problem. However, if one attempts to solve:
+$x = \f y \wedge \f y = z$, the solver fails to find a
+proper substitution, and returns nothing. Indeed, the first clause demands that
+$\f y$ substitutes to $x$, meaning that the second clause becomes $x = z$, which
+always evaluates to false ($x$ and $z$ are two distinct rigid variables).
+
+Once the algorithm has run, we obtain an output substitution $\sigma$. One can, if they
+wish to do so, take the reflexive-transitive closure $\sigma^*$, and apply it to
+a flexible variable (say, $\f y$) to recover the parameter of \Rule{ExistsE}
+that should be used in the logical rules (here, $x$). This is all very informal
+-- the point of the subsequent sections is to formalize the claim that the proof
+search algorithm produces a proof witness.
 
 \begin{figure}
   \centering
@@ -175,18 +276,20 @@ and var = P.point             and state = descr P.state
   \label{fig:formulas}
 \end{figure}
 
-We implement proof search in OCaml (\fref{formulas}). The data type of formulas
+We implement proof search in OCaml (\fref{formulas}); we do not use explicit
+substitutions, but rather an optimized representation based on a union-find data
+structure. The data type of formulas
 is self-explanatory. Variables are implemented as equivalence classes in a
 \emph{persistent} union-find data structure, which the module \li+P+ implements.
-The $V$ parameter in our rules is embodied by the \li+state+ type; just
-like the $V$ parameter is chained from one premise to another (\Rule{And}),
-\li+state+ is an input and an output to the solver. Just like the $V$ parameter
+The $V, \sigma$ parameters in our rules are embodied by the \li+state+ type; just
+like the $\sigma$ parameter is chained from one premise to another (\Rule{And}),
+\li+state+ is an input and an output to the solver. Just like the $\sigma$ parameter
 in the rules, a \li+state+ of the persistent union-find represents
 a set of equations between variables. In a sense, \li+state+ is a specific
-implementation of the theoretical $V$ parameter. It represents a
+implementation of the theoretical $\sigma$ parameter. It represents a
 substitution; in other words, this is what we want our solver to compute.
 
-The choice of a persistent union-find is irrelevant. All that matters is that we
+The choice of a union-find is irrelevant. All that matters is that we
 pick a data structure that models substitutions, and that is \emph{persistent}.
 Had we picked an explicit substitution instead of a union-find, the rest of the
 discussion would have been the same.
@@ -228,14 +331,15 @@ since it is suspended behind a \li+fun+ expression (OCaml is a strict language).
 \section{Building derivations}
 
 There are two shortcomings with this solver. First, the \li+unify+ sub-routine
-conflates several rules of the logic together. Indeed, the \li+return (P.union ...)+
+conflates several rules together. Indeed, the \li+return (P.union ...)+
 expression hides a combination of \Rule{Inst} and \Rule{Refl}. Second, we
 have no way to replay the proof to verify it independently. One may argue that
-in this simplified example, one can just apply the substitution to the original
+in this simplified example, the outputs substitution \emph{is} the proof
+witness: one can just apply the substitution to the original
 formula and verify that all the clauses are of the form $x = x$, without the
 need for a proof tree. In the general case, however, the proof tree contains the
-elimination witnesses for quantifiers; this allows one to independently verify a
-proof without relying on inference techniques, such as flexible variables.
+\Rule{ExistsE} rule, and proof witnesses are attached to arbitrary nodes of the
+tree. We thus need to build a properly annotated proof tree in the general case.
 
 \subsection{Defining proof trees}
 
@@ -244,22 +348,29 @@ corresponds in an obvious manner to the application of an admissible rule. To
 that effect, we define the data type of all three rules in our system, which we
 apply to the functor of \emph{proof trees} (\fref{proof-trees}).
 
+We record applications of \Rule{Inst}, \Rule{Refl} and \Rule{And}. This produces
+a derivation tree that makes sure that the algorithm follows the algorithmic
+rules from \fref{proof-system}. \sref{generate-logical} shows how to generate a
+slightly different tree that matches the rules from \fref{logic}.
+
 \begin{figure}
   \centering
 \begin{ocaml}
+(* These two modules belong to the library. *)
 module type LOGIC = sig     module MakeProofTree (L: LOGIC) = struct
   type formula                type derivation = L.formula * rule
   type rule_name              and rule = L.rule_name * premises
 end                           and premises = Premises of derivation list
                             end 
 
+(* This is the client code using modules from the library. *)
 module MyLogic = struct
   type formula = ... (* as before *)
   type rule_name = R_And | R_Refl | R_Inst
 end
 module MyProofTree = MakeProofTree(MyLogic)
 \end{ocaml}
-  \caption{The functor of proof trees}
+  \caption{The functor of proof trees (library and client code)}
   \label{fig:proof-trees}
 \end{figure}
 
@@ -317,7 +428,7 @@ end = ...
 module M = MOption
 module MWriter = WriterT(M)(L)
 \end{ocaml}
-  \caption{The writer monad transformer}
+  \caption{The writer monad transformer (library code)}
   \label{fig:writer}
 \end{figure}
 
@@ -326,7 +437,11 @@ A computation within this new monad has type (simplified after functor applicati
 the solver is focused on a given rule, has reached a certain state, after
 proving a certain list of premises.
 
-Once all the premises have been proved, one needs to draw a horizontal line and
+We provide a convenience \li+qed+ combinator: once one has obtained the final
+state, it pairs the state with the name of the rule we want to conclude with. It
+makes the implementation of \li+solve+ (\fref{solver2}) more elegant.
+
+Once all the premises have been proven, one needs to draw a horizontal line and
 reach the conclusion of the proof. That is, take the final state and the list of
 premises, and generate a \li+derivation+ that stands for the application of the
 entire rule.
@@ -338,7 +453,7 @@ working state (a computation in the monad).
 
 An outcome is, as we mentioned earlier, the pair of a final \li+state+ along
 with a \li+derivation+ that justifies that we reached this state. The pair is
-optional since, after all, not all formulas are provable.
+wrapped in \li+M.t+ (here, \li+option+): proving a formula may fail.
 
 The type \li+outcome+ (\fref{combinators}) is parametric: it works for any
 state that the client code uses. In other words, our library is generic with
@@ -357,17 +472,21 @@ let premise (outcome: 'a outcome): 'a m =
     return state
   )
 
-let prove (goal: goal) (rule: rule_name) (x: 'a m): 'a outcome =
-  M.(x >>= fun (premises, state) ->
+let prove (goal: goal) (x: ('a * rule_name) m): 'a outcome =
+  M.(x >>= fun (premises, (state, rule)) ->
     return (state, (goal, (rule, Premises premises))))
 
 let axiom (state: 'a) (goal: goal) (axiom: rule_name): 'a outcome =
-  prove goal axiom (return state)
+  prove goal (return (state, axiom))
+
+let qed r e =
+  return (e, r)
 
 let fail: 'a outcome =
   M.nothing
 \end{ocaml}
-  \caption{The high-level combinators for building proof derivations}
+  \caption{The high-level combinators for building proof derivations (library
+  code)}
   \label{fig:combinators}
 \end{figure}
 
@@ -422,9 +541,9 @@ let rec prove_equality (state: state) (goal: formula) (v1: var) (v2: var) =
   | Flexible, Flexible
   | Flexible, Rigid ->
       let state = P.union v1 v2 state in
-      prove goal R_Instantiate begin
+      prove goal begin
         premise (prove_equality state goal v1 v2) >>=
-        return
+        qed R_Instantiate
       end
   (* ... *)
   | Rigid, Rigid ->
@@ -438,13 +557,13 @@ let rec solve (state: state) (goal: formula): state outcome =
   | Equals (v1, v2) ->
       prove_equality state goal v1 v2
   | And (g1, g2) ->
-      prove goal R_And begin
+      prove goal begin
         premise (solve state g1) >>= fun state ->
         premise (solve state g2) >>=
-        return
+        qed R_And
       end
 \end{ocaml}
-  \caption{A solver written using the high-level combinators}
+  \caption{A solver written using the high-level combinators (client code)}
   \label{fig:solver2}
 \end{figure}
 
@@ -491,7 +610,7 @@ type formula =
   (* ... *)
   | Or of formula * formula
 
-(* The logic is also extend with two rules. *)
+(* The logic is also extended with two rules. *)
 type rule_name =
   (* ... *)
   | R_OrL
@@ -507,32 +626,33 @@ module MOption = struct
         | None -> search f xs
 end
 
-(* Equipped with [search], we define the high-level [choice] combinator... *)
-let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
-  M.search (fun (r, x) -> prove goal r (f x)) args
+(* Equipped with [search], we define the [choice] library combinator... *)
+let choice (goal: goal) (args: 'a list) (f: 'a -> ('b * rule_name) m): 'b outcome =
+  M.search (fun x -> prove goal (f x)) args
 
 (* ...which one uses as follows: *)
 let rec solve (state: state) (goal: formula): state outcome =
   match goal with
   (* ... *)
   | Or (g1, g2) ->
-      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun g ->
+      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun (r, g) ->
         premise (solve state g) >>=
-        return
+        qed r
       )
 \end{ocaml}
-  \caption{The choice combinator}
+  \caption{The choice combinator (library and client code)}
   \label{fig:choice}
 \end{figure}
 
-The solver can now solve problems of the form $x = z \vee
-\f y = z$. It fails, however, to solve problems of the form $(\f y = x \vee \f y = z) \wedge \f y = z$. The reason is, the option monad
-is not powerful enough: upon finding a suitable choice in the disjunction
-case, it commits to it and drops the other one. In other words, when hitting the
-disjunction, \li+MOption+ commits to $\sigma = \{ \f y \mapsto x \}$, instead of
-keeping $\sigma = \{ \f y \mapsto z \}$ as a backup solution. Phrased yet again
-differently, we need to replace \li+MOption+ with the non-determinism monad that
-will implement \emph{backtracking}.
+The solver can now solve problems of the form $x = z \vee \f y = z$. It fails,
+however, to solve problems of the form $(\f y = x \vee \f y = z) \wedge \f y =
+z$. The reason is, the option monad is not powerful enough: upon finding a
+suitable choice in the disjunction case, it commits to it and drops the other
+one. In other words, when hitting the disjunction, \li+MOption+ commits to
+$\sigma = \{ \f y \mapsto x \}$, instead of keeping $\sigma = \{ \f y \mapsto z
+\}$ as a backup solution. Phrased yet again differently, we need to replace
+\li+MOption+ with the non-determinism monad that will implement
+\emph{backtracking}.
 
 \subsection{The exploration monad}
 
@@ -570,6 +690,9 @@ combinators of the library now implement backtracking.
 In particular, the earlier example of $(\f y = x \vee \f y = z) \wedge \f y = z$ is now successfully solved by the
 library. Thanks to laziness, no extra computations occur; further solutions down
 the lazy list are only evaluated if the first ones failed.
+
+\section{Generating a proof tree using the logical rules}
+\label{sec:generate-logical}
 
 \section{Conclusion}
 
