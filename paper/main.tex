@@ -23,7 +23,7 @@
     deletekeywords={value},
   }
 \usepackage{minted}
-  \newminted[ocaml]{ocaml}{mathescape}
+  \newminted[ocaml]{ocaml}{mathescape,fontsize=\small}
 \usepackage{mathpartir}
   % Improvements to Didier's mathpartir package: make all rule names and
   % references use textsc, and also make references to rules done using the \Rule
@@ -155,20 +155,22 @@ type formula =                and descr =
 | Equals of var * var           | Flexible
 | And of formula * formula      | Rigid
 
-and var = P.point             and env = descr P.state
+and var = P.point             and state = descr P.state
   \end{ocaml}
-  \caption{Formulas and environments}
+  \caption{Formulas and state}
   \label{fig:formulas}
 \end{figure}
 
 We implement proof search in OCaml (\fref{formulas}). The data type of formulas
 is self-explanatory. Variables are implemented as equivalence classes in a
 \emph{persistent} union-find data structure, which the module \li+P+ implements.
-The $V$ parameter in our rules is embodied by the \li+env+ type
-(``environment''), which is an input and an output to the solver. An
-\li+env+ represents a given state of the union-find data structure, that is, a
-set of equations between variables. This is another way of representing a
-substitution, i.e. this is what we want our solver to compute.
+The $V$ parameter in our rules is embodied by the \li+state+ type; just
+like the $V$ parameter is chained from one premise to another (\Rule{And}),
+\li+state+ is an input and an output to the solver. Just like the $V$ parameter
+in the rules, a \li+state+ of the persistent union-find represents
+a set of equations between variables. In a sense, \li+state+ is a specific
+implementation of the theoretical $V$ parameter. It represents a
+substitution; in other words, this is what we want our solver to compute.
 
 The choice of a persistent union-find is irrelevant. All that matters is that we
 pick a data structure that models substitutions, and that is \emph{persistent}.
@@ -176,7 +178,7 @@ Had we picked an explicit substitution instead of a union-find, the rest of the
 discussion would have been the same.
 
 \fref{solver} implements a solver for our minimal problem; written within the
-\li+MOption+ monad, it returns either \li+Some env+ (in case a successful
+\li+MOption+ monad, it returns either \li+Some state+ (in case a successful
 substitution has been found), or \li+None+ if no solution exists. The solver is
 complete.
 
@@ -184,19 +186,19 @@ complete.
   \centering
   \begin{ocaml}
 module MOption = struct
-  (* defines [return], [nothing] and [>>=] *)
+  (* ... defines [return], [nothing] and [>>=] *)
 end
 
-let unify env v1 v2 =                         let rec solve env formula =
-  match P.find v1 env, P.find v2 env with       match formula with
-  | Flexible, Flexible                          | Equals (v1, v2) ->
-  | Flexible, Rigid ->                              unify env v1 v2
-      return (P.union v1 v2 env)                | And (f1, f2) ->
-  | Rigid, Flexible ->                              solve env f1 >>= fun env ->
-      return (P.union v2 v1 env)                    solve env f2
+let unify state v1 v2 =                         let rec solve state formula =
+  match P.find v1 state, P.find v2 state with     match formula with
+  | Flexible, Flexible                            | Equals (v1, v2) ->
+  | Flexible, Rigid ->                                unify state v1 v2
+      return (P.union v1 v2 state)                | And (f1, f2) ->
+  | Rigid, Flexible ->                                solve state f1 >>= fun state ->
+      return (P.union v2 v1 state)                    solve state f2
   | Rigid, Rigid ->
-      if P.same v1 v2 env then
-        return env
+      if P.same v1 v2 state then
+        return state
       else
         nothing
   \end{ocaml}
@@ -283,7 +285,7 @@ In order to get a new \li+>>=+ operator that combines the features of
 the option and writer monads, we apply the \li+WriterT+ monad transformer to the
 \li+MOption+ monad (\fref{writer}) and obtain \li+MWriter+, a monad whose
 computations represent a sequence of derivations (the premises we have proved so far)
-along with a result (the \li+env+ that we chain through the premises). These
+along with a result (the \li+state+ that we chain through the premises). These
 computations are wrapped in \li+MOption.m+, that is, are wrapped within an
 \li+option+ to account for a possible proof failure.
 
@@ -298,11 +300,266 @@ module WriterT (M: MONAD) (L: MONOID): sig      module L = struct
   val tell: L.a -> unit m
 end = ...
 
-module MWriter = WriterT(MOption)(L)
+module M = MOption
+module MWriter = WriterT(M)(L)
 \end{ocaml}
   \caption{The writer monad transformer}
   \label{fig:writer}
 \end{figure}
+
+A computation within this new monad has type (simplified after functor applications)
+\li+(derivation list * state) option+. It represents a given point in the proof;
+the solver is focused on a given rule, has reached a certain state, after
+proving a certain list of premises.
+
+Once all the premises have been proved, one needs to draw a horizontal line and
+reach the conclusion of the proof. That is, take the final state and the list of
+premises, and generate a \li+derivation+ that stands for the application of the
+entire rule.
+
+Contrary to the first implementation (\fref{solver}), where the working state
+and the return value of \li+solve+ both had type \li+state option+, we now
+distinguish between an \li+outcome+ (the result of a call to \li+solve+) and a
+working state (a computation in the monad).
+
+An outcome is, as we mentioned earlier, the pair of a final \li+state+ along
+with a \li+derivation+ that justifies that we reached this state. The pair is
+optional since, after all, not all formulas are provable.
+
+The type \li+outcome+ (\fref{combinators}) is parametric: it works for any
+state that the client code uses. In other words, our library is generic with
+regards to the particular \li+state+ type the client uses.
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+(* This snippet is in the [MWriter(M)(L)] monad. Upon a first reading, think
+   [module M = MOption]. *)
+type 'a outcome = ('a * derivation) M.m
+
+let premise (outcome: 'a outcome): 'a m =
+  M.bind outcome (fun (state, derivation) ->
+    tell [ derivation ] >>= fun () ->
+    return state
+  )
+
+let prove (goal: goal) (rule: rule_name) (x: 'a m): 'a outcome =
+  M.(x >>= fun (premises, state) ->
+    return (state, (goal, (rule, Premises premises))))
+
+let axiom (state: 'a) (goal: goal) (axiom: rule_name): 'a outcome =
+  prove goal axiom (return state)
+
+let fail: 'a outcome =
+  M.nothing
+\end{ocaml}
+  \caption{The high-level combinators for building proof derivations}
+  \label{fig:combinators}
+\end{figure}
+
+We now have a duality between the \li+outcome+ type (the result of solving a
+sub-goal) and the \li+m+ type (a computation within the monad, i.e. a working
+state between two premises). Therefore, we introduce two high-level combinators:
+\li+premise+ and \li+prove+. The former goes from \li+outcome+ to \li+m+: it
+injects a new sub-goal as a premise of the rule we are currently trying to
+prove. The latter goes from \li+m+ to \li+outcome+: if all premises have been
+satisfied, it draws the horizontal line that builds a new node in the derivation
+tree.
+
+\begin{itemize}
+
+  \item \li+premise+ is the composition of \li+tell+, which records the
+    derivation for this sub-goal, and \li+return+, which passes the state on to
+    the next sub-goal.
+
+  \item \li+prove+ is a computation in the \li+M+ monad (here, \li+MOption+). If
+    all the premises have been satisfied, it bundles them as a new node of the
+    derivation tree. If a premise failed, then \li+x+ is \li+M.nothing+, and
+    \li+prove+ also returns a failed outcome.
+
+  \item \li+axiom+ is short-hand for a rule that requires no premises.
+
+  \item \li+fail+ is for situations where no rule applies: this is a failed outcome.
+\end{itemize}
+
+\subsection{A solver in the new style}
+
+\fref{solver2} demonstrates an implementation of \li+solve+ in the new style.
+Compared to the previous implementation (\fref{solver}):
+\begin{itemize}
+  \item \li+prove_equality+ makes it explicit which rules are applied, and
+    singles out two distinct rule applications in the flexible-rigid case;
+  \item the premises of each rule are clearly identified;
+  \item axioms and failure conditions are explicit,
+  \item the \li+And+ case is easy to review manually, to make sure that no
+    premise was forgotten.
+\end{itemize}
+This is, as mentioned previously, a minimal example that showcases the usage of
+the library. In the implementation of Mezzo, switching the core of the
+type-checker to this style revealed several bugs where premises were not
+properly chained or simply forgotten.
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+let rec prove_equality (state: state) (goal: formula) (v1: var) (v2: var) =
+  let open MOption in
+  match P.find v1 state, P.find v2 state with
+  | Flexible, Flexible
+  | Flexible, Rigid ->
+      let state = P.union v1 v2 state in
+      prove goal R_Instantiate begin
+        premise (prove_equality state goal v1 v2) >>=
+        return
+      end
+  (* ... *)
+  | Rigid, Rigid ->
+      if P.same v1 v2 state then
+        axiom state goal R_Refl
+      else
+        fail
+
+let rec solve (state: state) (goal: formula): state outcome =
+  match goal with
+  | Equals (v1, v2) ->
+      prove_equality state goal v1 v2
+  | And (g1, g2) ->
+      prove goal R_And begin
+        premise (solve state g1) >>= fun state ->
+        premise (solve state g2) >>=
+        return
+      end
+\end{ocaml}
+  \caption{A solver written using the high-level combinators}
+  \label{fig:solver2}
+\end{figure}
+
+\section{Backtracking}
+
+\subsection{Limitations of the option monad}
+
+We now extend our formulas with disjunctions (\fref{choice}). A consequence
+is that we now need our base monad \li+M+ to offer a new operation; namely, one
+that, among several possible choices, picks the first one that is not a failure.
+We thus augment \li+MOption+ with a search combinator (\fref{choice}), which in
+turn allows one to implement a high-level \li+choice+ combinator for our
+library. The \li+choice+ combinator attempts to prove a \li+goal+ by trying a
+function \li+f+ on several arguments \li+a+, each of which
+is associated to a given rule. We can add one more branch to the \li+solve+
+function, which attempts to prove a disjunction by first trying a
+left-elimination (\Rule{Or-L}, \fref{proof-system2}), then a right-elimination
+(\Rule{Or-R}).
+
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule[Or-L]{
+      V \vdash P \dashv V'
+    }{
+      V \vdash P \vee Q \dashv V'
+    }
+
+    \inferrule[Or-R]{
+      V \vdash Q \dashv V'
+    }{
+      V \vdash P \vee Q \dashv V'
+    }
+  \end{mathpar}
+  \caption{New proof rules for disjunction}
+  \label{fig:proof-system2}
+\end{figure}
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+(* We extend formulas with disjunctions. *)
+type formula =
+  (* ... *)
+  | Or of formula * formula
+
+(* The logic is also extend with two rules. *)
+type rule_name =
+  (* ... *)
+  | R_OrL
+  | R_OrR
+
+module MOption = struct
+  (* ... *)
+  let rec search f = function
+    | [] -> None
+    | x :: xs ->
+        match f x with
+        | Some x -> Some x
+        | None -> search f xs
+end
+
+(* Equipped with [search], we define the high-level [choice] combinator... *)
+let choice (goal: goal) (args: (rule_name * 'a) list) (f: 'a -> 'b m): 'b outcome =
+  M.search (fun (r, x) -> prove goal r (f x)) args
+
+(* ...which one uses as follows: *)
+let rec solve (state: state) (goal: formula): state outcome =
+  match goal with
+  (* ... *)
+  | Or (g1, g2) ->
+      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun g ->
+        premise (solve state g) >>=
+        return
+      )
+\end{ocaml}
+  \caption{The choice combinator}
+  \label{fig:choice}
+\end{figure}
+
+The solver can now solve problems of the form $\R x, \R z, \F \f y.\ x = z \vee
+\f y = z$. It fails, however, to solve problems of the form $\R x, \R z, \F \f
+y.\ (\f y = x \vee \f y = z) \wedge \f y = z$. The reason is, the option monad
+is not powerful enough: upon finding a suitable choice in the disjunction
+case, it commits to it and drops the other one. In other words, when hitting the
+disjunction, \li+MOption+ commits to $\sigma = \{ \f y \mapsto x \}$, instead of
+keeping $\sigma = \{ \f y \mapsto z \}$ as a backup solution. Phrased yet again
+differently, we need to replace \li+MOption+ with the non-determinism monad that
+will implement \emph{backtracking}.
+
+\subsection{The exploration monad}
+
+Conceptually, we want to change our way of thinking; instead of thinking of
+\li+solve+ as a function that returns \emph{a solution}, we now think of it as a
+function that returns \emph{several possible solutions}. The state is now a
+set of states, each of which represent a possible choice.
+
+The monad of non-determinism is implemented using lists; OCaml is a strict
+language, so we write the non-determinism monad (also known as the exploration
+or backtracking monad) using lazy lists (\fref{mexplore}).
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+module LL = LazyList
+module MExplore
+  type 'a m = 'a LL.t
+  let return = LL.one
+  let ( >>= ) = LL.flattenl (LL.map f x)
+  let nothing = LL.nil
+  let search f l = LL.bind (LL.of_list l) f
+end
+\end{ocaml}
+  \caption{The exploration monad}
+  \label{fig:mexplore}
+\end{figure}
+
+The reader can now go back and replace \li+module M = MOption+ with
+\li+module M = MExplore+ in \fref{writer}. The rest of the library remains
+unchanged; the \li+solve+ function (the client code) is also unchanged; and the
+combinators of the library now implement backtracking.
+
+In particular, the earlier example of $\R x, \R z, \F \f
+y.\ (\f y = x \vee \f y = z) \wedge \f y = z$ is now successfully solved by the
+library. Thanks to laziness, no extra computations occur; further solutions down
+the lazy list are only evaluated if the first ones failed.
+
+\section{Conclusion}
+
 
 
 \bibliographystyle{abbrvnat}
