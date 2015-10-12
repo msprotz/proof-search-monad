@@ -1,4 +1,4 @@
-open Lib
+(* First example: just the option monad. *)
 
 module P = PersistentUnionFind
 
@@ -8,7 +8,6 @@ module P = PersistentUnionFind
 type formula =
   | Equals of var * var
   | And of formula * formula
-
 
 (** Variables as equivalence classes in a union-find. *)
 
@@ -24,6 +23,19 @@ and descr =
 and var = P.point
 
 and env = descr P.state
+
+(** The option monad. *)
+
+module Option = struct
+  let return = fun x -> Some x
+  let ( >>= ) x f =
+    match x with
+    | Some x -> f x
+    | None -> None
+  let nothing = None
+end
+
+open Option
 
 
 (** Helpers to deal with the environment. *)
@@ -44,29 +56,19 @@ let unify (env: env) (v1: var) (v2: var): env option =
   match P.find v1 env, P.find v2 env with
   | Flexible, Flexible
   | Flexible, Rigid ->
-      Some (P.union v1 v2 env)
+      return (P.union v1 v2 env)
   | Rigid, Flexible ->
-      Some (P.union v2 v1 env)
+      return (P.union v2 v1 env)
   | Rigid, Rigid ->
       if P.same v1 v2 env then
-        Some env
+        return env
       else
-        None
-
-module Option = struct
-  let return = fun x -> Some x
-  let ( >>= ) x f =
-    match x with
-    | Some x -> f x
-    | None -> None
-  let nothing = None
-end
+        nothing
 
 
 (** Solving *)
 
 let rec solve (env: env) (formula: formula): env option =
-  let open Option in
   match formula with
   | Equals (v1, v2) ->
       unify env v1 v2
@@ -84,6 +86,6 @@ let _ =
   let f1 = And (Equals (x, y), Equals (z, z)) in
   (* x = ?y /\ ?y = z *)
   let f2 = And (Equals (x, y), Equals (y, z)) in
-  assert (is_Some (solve env f1));
-  assert (is_None (solve env f2));
+  assert (solve env f1 <> None);
+  assert (solve env f2 = None);
   ()

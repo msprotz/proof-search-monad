@@ -1,4 +1,4 @@
-open ProofTree
+open Derivations
 
 module type MONAD = sig
   type 'a m
@@ -77,7 +77,7 @@ end = struct
 end
 
 module Make(Logic: LOGIC)(M: MONAD) = struct
-  module Proofs = ProofTree.Make(Logic)
+  module Proofs = Derivations.Make(Logic)
 
   (* The monoid of derivation lists. *)
   module L: MONOID with type a = Proofs.derivation list = struct
@@ -117,4 +117,8 @@ module Make(Logic: LOGIC)(M: MONAD) = struct
   (* Multiple choices -- may or may not backtrack, depending on [M]. *)
   let choice (goal: goal) (args: 'a list) (f: 'a -> ('b * rule_name) m): 'b outcome =
     M.search (fun x -> prove goal (f x)) args
+
+  (* Syntactic convenience operator: it's nice to end proof with [qed]! *)
+  let qed r e =
+    return (e, r)
 end

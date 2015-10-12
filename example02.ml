@@ -1,3 +1,6 @@
+(* Second example: this is the version at the end of §3, which builds
+ * derivations automatically _and_ backtracks. *)
+
 module P = PersistentUnionFind
 
 module Formula = struct
@@ -34,9 +37,11 @@ module Formula = struct
     | R_OrR
 end
 
-(* [MExplore] and [MOption] both work here. *)
-module M = Monads.MExplore
-module ProofMonad = Monads.Make(Formula)(M)
+(* [MExplore] and [MOption] both work here; only [MExplore] implements
+ * backtracking. Switch to [MOption] to get the implementation at the end of §2
+ * in the paper. *)
+module M = Combinators.MExplore
+module ProofMonad = Combinators.Make(Formula)(M)
 
 open ProofMonad
 open Formula
@@ -62,8 +67,6 @@ let name v env =
   | Flexible, name ->
       "?" ^ name
 
-
-let qed r e = return (e, r)
 
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
@@ -109,6 +112,10 @@ let rec solve (env: env) (goal: formula): env outcome =
       )
 
 
+(* Using the library: a pretty-printer of proof trees, along with a few test
+ * helpers (to make sure our library actually does what we want). Feel free to
+ * sprinkle a few [print_endline] in the solver above to make sure that nothing
+ * is evaluated too much. *)
 module Test = struct
 
   let print_derivation (env: env) (d: derivation): string =
