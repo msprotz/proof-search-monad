@@ -37,7 +37,7 @@
 
 \newcommand{\fref}[1]{Figure~\ref{fig:#1}}
 \newcommand{\R}{\ensuremath{\mathcal{R}}} % Rigid
-\newcommand{\f}[1]{\ensuremath{\mathbf{#1}}} % Bold
+\newcommand{\f}[1]{\ensuremath{#1^?}} % Bold
 \newcommand{\F}{\ensuremath{\mathcal{F}}} % Flexible
 \newcommand{\V}{\ensuremath{\mathcal{V}}} % The prefix
 
@@ -58,30 +58,28 @@
   We present the proof search monad, a set of combinators that allows one to
   write a proof search engine in a style that resembles closely the inference
   rules. The user calls functions such as \li+premise+, \li+prove+ or
-  \li+choice+; the library then takes care of generating a derivation tree,
-  which serves either as a witness (success) or as an error message (failure).
+  \li+choice+; the library then takes care of generating a derivation tree.
   Proof search engines written in this style enjoy: first, a one-to-one
   correspondence between the implementation and the theoretical rules, which
   makes manual inspection easier; second, proof witnesses ``for free'', which
-  makes a verified-validation approach easier too.
+  makes a verified, independent validation approach easier too.
 \end{abstract}
 
 \section{A minimal problem}
 
 We consider conjunctions of equalities of the form
-$\V x_1, \ldots, \V x_n.\ \bigwedge_k x_i = x_j$, that is, conjunctions of
+$\bigwedge_k x_i = x_j$, that is, conjunctions of
 equalities between variables. Some variables are \emph{flexible}, meaning they may be
-substituted for other variables. Their binder $\V x_i$ is of the form $\F \f
-x_i$ (and their are typeset in bold font). Other variables are \emph{rigid}, and
-may not be substituted. Their binder $\V x_i$ is of the form $\R x_i$. The
-problem consists in computing a substitution of \emph{flexible} variables that
-evaluate the conjunction to \li+true+. If no such substitution exists, the
+substituted with other variables. They are typeset as follows: $\f y$.
+Rigid variables may not be substituted. They are typeset as follows: $x$. The
+problem consists in computing a substitution of \emph{flexible} variables so that
+the conjunction evaluates to \li+true+. If no such substitution exists, the
 solver outputs nothing.
 
-For instance, one may want to solve: $\R x, \R z, \F \f y.\ x = \f y \wedge z = z$.
+For instance, one may want to solve: $x = \f y \wedge z = z$.
 A solution exists: the solver outputs $\sigma = \{ \f y \mapsto x \}$ as a valid
 substitution that solves the input problem. However, if one attempts to solve:
-$\R x, \R z, \F \f y.\ x = \f y \wedge \f y = z$, the solver fails to find a
+$x = \f y \wedge \f y = z$, the solver fails to find a
 proper substitution, and return nothing. Indeed, the first clause demands that
 $\f y$ substitutes to $x$, meaning that the second clause becomes $x = z$, which
 always evaluates to false ($x$ and $z$ are two distinct rigid variables).
@@ -99,23 +97,31 @@ guessed). Flexible variables are thus an \emph{implementation technique}.
 In order to simplify the discussion, we skip elimination rules and quantifiers
 altogether, and just assume that our input problem contains a combination of
 flexible and rigid variables. Furthermore, we assume that any instantiation of a
-flexible variable is legal. The only crucial point is that the solver outputs
-something.
+flexible variable is legal. The only point that matters is that the solver
+computes a result which sequenced throughout the proof search.
 
 (The library that we describe here has been used in the implementation of the
-Mezzo type-checker. There, all introduction and elimination rules are present;
-furthermore, the implementation uses \emph{levels} to guarantee that only sound
-instantiation choices are performed. This is, however, orthogonal to the present
-discussion; the minimal problem we consider already conveys all the important
-points, so we will skip quantifiers in the remainder of the discussion.)
+Mezzo type-checker. There, the logic (the type system) does have all four
+introduction and elimination rules; in the implementation, we used \emph{levels}
+to guarantee that only sound instantiation choices are performed. This is,
+however, orthogonal to the present discussion; the minimal problem we consider
+already conveys all the important points, so we skip quantifiers in the
+remainder of the discussion.)
 
-Solving conjunctions of equalities requires three rules, which make up our
-logic (\fref{proof-system}). \Rule{Refl} embodies the reflexivity axiom; \Rule{And}
-highlights that the proof produces an \emph{output} $V'$ which is \emph{chained}
+\fref{proof-system} describes a proof search procedure for conjunctions of
+equalities. Rules poke at a set of variables $V$ to tell apart rigid variables from
+flexible variables. Each rule takes a substitution $\sigma$ as an input, and outputs
+an updated substitution $\sigma'$. A variable in $V$ is either a rigid ($x$),
+or a flexible ($\f y$).
+
+\Rule{Refl} embodies the reflexivity axiom; \Rule{And}
+highlights that the first sub-goal (premise) produces an \emph{output} $V'$
+which is then \emph{chained}
 from one premise to another; \Rule{Inst} embodies the ``instantiation''
-mechanism: in essence, if $y$ has not been instantiated so far, one
-may instantiate it onto any other variable and perform the substitution in order
-to prove the goal ($[\f y/x] P$ stands for ``replace $y$ with $x$ in $P$'').
+mechanism: in essence, if $\f y$ has not been instantiated so far, one
+may instantiate it onto any other variable (rigid or flexible), i.e. add a new
+entry for $\f y$ in the substitution. Finally, \Rule{Subst} may apply the
+substitution at any time in order to prove the goal.
 
 \begin{figure}
   \centering
@@ -123,30 +129,38 @@ to prove the goal ($[\f y/x] P$ stands for ``replace $y$ with $x$ in $P$'').
     \inferrule[Refl]{
       \quad
     }{
-      V \vdash x = x \dashv V
+      V, \sigma \vdash x = x \dashv \sigma
+    }
+
+    \inferrule[Subst]{
+      V, \sigma \vdash \sigma P \dashv \sigma'
+    }{
+      V, \sigma \vdash P \dashv \sigma'
     }
 
     \inferrule[Inst]{
-      x \in V_i \\
-      V_1, \F(\f y = x), V_2 \vdash [\f y/x] P \dashv V'
+      x \in V \\ \f y \in V \\ \f y \not\in \sigma \\\\
+      V, \{ \f y \mapsto x \} \circ \sigma \vdash  P \dashv \sigma'
     }{
-      V_1, \F(\f y), V_2 \vdash P \dashv V'
+      V \vdash P \dashv \sigma'
     }
 
     \inferrule[And]{
-      V \vdash P \dashv V' \\
-      V' \vdash Q \dashv V''
+      V, \sigma \vdash P \dashv \sigma' \\\\
+      V, \sigma' \vdash Q \dashv \sigma''
     }{
-      V \vdash P \wedge Q \dashv V''
+      V \vdash P \wedge Q \dashv \sigma''
     }
   \end{mathpar}
-  \caption{Proof rules for the first system}
+  \caption{Semi-algorithmic proof rules}
   \label{fig:proof-system}
 \end{figure}
 
-Once the proof tree has been laid out, one obtains an output (e.g. $V''$ in
-\Rule{And}) where the instantiation choices (e.g. $\F (\f x_i = x_j)$) determine
-the desired substitution (e.g. $\sigma = \{ \f x_i \mapsto x_j \}^*$).
+Once the proof tree has been laid out, one obtains an output (e.g. $\sigma''$ in
+\Rule{And}). Since flexible variables may instantiate onto other flexible
+variables, one may need to apply the substitution several times. The reflexive-transitive
+closure of $\sigma$, i.e. $\sigma^*$, is thus the desired result of the proof
+search.
 
 \begin{figure}
   \centering
@@ -511,9 +525,8 @@ let rec solve (state: state) (goal: formula): state outcome =
   \label{fig:choice}
 \end{figure}
 
-The solver can now solve problems of the form $\R x, \R z, \F \f y.\ x = z \vee
-\f y = z$. It fails, however, to solve problems of the form $\R x, \R z, \F \f
-y.\ (\f y = x \vee \f y = z) \wedge \f y = z$. The reason is, the option monad
+The solver can now solve problems of the form $x = z \vee
+\f y = z$. It fails, however, to solve problems of the form $(\f y = x \vee \f y = z) \wedge \f y = z$. The reason is, the option monad
 is not powerful enough: upon finding a suitable choice in the disjunction
 case, it commits to it and drops the other one. In other words, when hitting the
 disjunction, \li+MOption+ commits to $\sigma = \{ \f y \mapsto x \}$, instead of
@@ -526,7 +539,8 @@ will implement \emph{backtracking}.
 Conceptually, we want to change our way of thinking; instead of thinking of
 \li+solve+ as a function that returns \emph{a solution}, we now think of it as a
 function that returns \emph{several possible solutions}. The state is now a
-set of states, each of which represent a possible choice.
+set of states, each of which represent a path in the search tree of derivation
+trees.
 
 The monad of non-determinism is implemented using lists; OCaml is a strict
 language, so we write the non-determinism monad (also known as the exploration
@@ -553,14 +567,30 @@ The reader can now go back and replace \li+module M = MOption+ with
 unchanged; the \li+solve+ function (the client code) is also unchanged; and the
 combinators of the library now implement backtracking.
 
-In particular, the earlier example of $\R x, \R z, \F \f
-y.\ (\f y = x \vee \f y = z) \wedge \f y = z$ is now successfully solved by the
+In particular, the earlier example of $(\f y = x \vee \f y = z) \wedge \f y = z$ is now successfully solved by the
 library. Thanks to laziness, no extra computations occur; further solutions down
 the lazy list are only evaluated if the first ones failed.
 
 \section{Conclusion}
 
+We presented a support library for writing a proof search engine using backtracking in
+any given logic; indeed, the library is parameterized by: the type of formulas; the type of
+rule applications; the internal state type of the client. By merely using the
+combinators of the library, the client gets derivations built for free; this allows
+a separate verifier to independently check the steps required to prove the
+formula. By opting into the library, the client gets to rewrite their code in a
+new syntactic style that makes rule application explicits, forbids ``bundled''
+applications of multiple rules at the same time and clearly lays out the
+premises required to prove a judgement. Since the code resembles the logical
+rules, mistakes are easier to spot.
 
+The logic presented in this paper is as simple as it gets. It does, however,
+highlight the main concepts. A version of this library is used in the core of
+Mezzo's type-checker. The version of the library used in Mezzo also builds
+failed derivations; these failed derivations stop at the first failed premise
+or, in case of a choice, list all the failed attempts. We have not yet explained
+this last feature as a clean combination of monads and operators, but hope to do
+so in the near future.
 
 \bibliographystyle{abbrvnat}
 \bibliography{local}

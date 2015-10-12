@@ -34,8 +34,7 @@ module MExplore: MONAD with type 'a m = 'a LazyList.t = struct
   open LazyList
   type 'a m = 'a t
   let return = one
-  let bind x f =
-    flattenl (map f x)
+  let bind x f = flattenl (map f x)
   let ( >>= ) = bind
   let nothing = nil
   let extract x =
