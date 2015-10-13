@@ -27,7 +27,7 @@ module Formula = struct
   (* Variables are defined using a persistent union-find data structure. *)
   and var = P.point
 
-  and env = descr P.state
+  and state = descr P.state
 
   type rule_name =
     | R_And
@@ -47,21 +47,21 @@ open ProofMonad
 open Formula
 
 
-(** Helpers to deal with the environment. *)
+(** Helpers to deal with the stateironment. *)
 
-(* The empty environment *)
-let empty: env = P.init ()
+(* The empty stateironment *)
+let empty: state = P.init ()
 
-let bind_rigid (env: env) (name: string): var * env =
-  P.create (Rigid, name) env
+let bind_rigid (state: state) (name: string): var * state =
+  P.create (Rigid, name) state
 
-let bind_flexible (env: env) (name: string): var * env =
-  P.create (Flexible, name) env
+let bind_flexible (state: state) (name: string): var * state =
+  P.create (Flexible, name) state
 
-let find v env = fst (P.find v env)
+let find v state = fst (P.find v state)
 
-let name v env =
-  match P.find v env with
+let name v state =
+  match P.find v state with
   | Rigid, name ->
       name
   | Flexible, name ->
@@ -71,43 +71,43 @@ let name v env =
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
  * unifies with a rigid and instantiates onto that rigid. *)
-let rec prove_equality (env: env) (goal: goal) (v1: var) (v2: var) =
-  match find v1 env, find v2 env with
+let rec prove_equality (state: state) (goal: goal) (v1: var) (v2: var) =
+  match find v1 state, find v2 state with
   | Flexible, Flexible
   | Flexible, Rigid ->
-      let env = P.union v1 v2 env in
+      let state = P.union v1 v2 state in
       prove goal begin
-        premise (prove_equality env goal v1 v2) >>=
+        premise (prove_equality state goal v1 v2) >>=
         qed R_Instantiate
       end
   | Rigid, Flexible ->
-      let env = P.union v2 v1 env in
+      let state = P.union v2 v1 state in
       prove goal begin
-        premise (prove_equality env goal v2 v1) >>=
+        premise (prove_equality state goal v2 v1) >>=
         qed R_Instantiate
       end
   | Rigid, Rigid ->
-      if P.same v1 v2 env then
-        axiom env goal R_Refl
+      if P.same v1 v2 state then
+        axiom state goal R_Refl
       else
         fail
 
 
 (** Solving *)
 
-let rec solve (env: env) (goal: formula): env outcome =
+let rec solve (state: state) (goal: formula): state outcome =
   match goal with
   | Equals (v1, v2) ->
-      prove_equality env goal v1 v2
+      prove_equality state goal v1 v2
   | And (g1, g2) ->
       prove goal begin
-        premise (solve env g1) >>= fun env ->
-        premise (solve env g2) >>=
+        premise (solve state g1) >>= fun state ->
+        premise (solve state g2) >>=
         qed R_And
       end
   | Or (g1, g2) ->
       choice goal [ R_OrL, g1; R_OrR, g2 ] (fun (side, g) ->
-        premise (solve env g) >>=
+        premise (solve state g) >>=
         qed side
       )
 
@@ -118,7 +118,7 @@ let rec solve (env: env) (goal: formula): env outcome =
  * is evaluated too much. *)
 module Test = struct
 
-  let print_derivation (env: env) (d: derivation): string =
+  let print_derivation (state: state) (d: derivation): string =
     let p_rule = function
       | R_And -> "/\\"
       | R_Instantiate -> "inst"
@@ -135,7 +135,7 @@ module Test = struct
       | And (f1, f2) ->
           p_and f1 ^ " /\\ " ^ p_and f2
       | Equals (v1, v2) ->
-          name v1 env ^ " = " ^ name v2 env
+          name v1 state ^ " = " ^ name v2 state
       | f ->
           "(" ^ p_formula f ^ ")"
     and p_formula f =
@@ -154,11 +154,11 @@ module Test = struct
     p "" d
 
 
-  let check b env d =
+  let check b state d =
     match M.extract d with
-    | Some (_env, d) ->
+    | Some (_state, d) ->
         assert b;
-        print_endline (print_derivation env d);
+        print_endline (print_derivation state d);
         print_newline ()
     | None ->
         assert (not b);
@@ -166,10 +166,10 @@ module Test = struct
 
 
   let _ =
-    let env = empty in
-    let x, env = bind_rigid env "x" in
-    let y, env = bind_flexible env "y" in
-    let z, env = bind_rigid env "z" in
+    let state = empty in
+    let x, state = bind_rigid state "x" in
+    let y, state = bind_flexible state "y" in
+    let z, state = bind_rigid state "z" in
     (* Example 1: « x = ?y /\ z = z ». Uses all three rules. *)
     let g1 = And (Equals (x, y), Equals (z, z)) in
     (* Example 2: « x = z /\ ?y = z ». The whole point is that the second
@@ -185,11 +185,11 @@ module Test = struct
     (* Example 5: « (x = z \/ (?y = x /\ ?y = z)) ». This one fails, but the
      * explanation is non-trivial. *)
     let g5 = Or (Equals (x, z), And (Equals (y, x), Equals (y, z))) in
-    check true env (solve env g1);
-    check false env(solve env g2);
-    check true env (solve env g3);
-    check true env (solve env g4);
-    check false env (solve env g5);
+    check true state (solve state g1);
+    check false state(solve state g2);
+    check true state (solve state g3);
+    check true state (solve state g4);
+    check false state (solve state g5);
     ()
 
 end

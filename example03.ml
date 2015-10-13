@@ -53,7 +53,7 @@ module M = Combinators.MExplore
 module ProofMonad = Combinators.Make(MyLogic)(M)
 
 open ProofMonad
-open Formula
+open MyLogic
 
 
 (** Helpers to deal with the stateironment. *)

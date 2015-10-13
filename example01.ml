@@ -22,7 +22,7 @@ and descr =
 (* Variables are defined using a persistent union-find data structure. *)
 and var = P.point
 
-and env = descr P.state
+and state = descr P.state
 
 (** The option monad. *)
 
@@ -38,54 +38,54 @@ end
 open Option
 
 
-(** Helpers to deal with the environment. *)
+(** Helpers to deal with the stateironment. *)
 
-(* The empty environment *)
-let empty: env = P.init ()
+(* The empty stateironment *)
+let empty: state = P.init ()
 
-let bind_rigid (env: env): var * env =
-  P.create Rigid env
+let bind_rigid (state: state): var * state =
+  P.create Rigid state
 
-let bind_flexible (env: env): var * env =
-  P.create Flexible env
+let bind_flexible (state: state): var * state =
+  P.create Flexible state
 
 (* Two variables can be unified as long as one of them is flexible, or that they
  * are two equal rigids. Two flexibles unify into the same flexible; a flexible
  * unifies with a rigid instantiates onto that rigid. *)
-let unify (env: env) (v1: var) (v2: var): env option =
-  match P.find v1 env, P.find v2 env with
+let unify (state: state) (v1: var) (v2: var): state option =
+  match P.find v1 state, P.find v2 state with
   | Flexible, Flexible
   | Flexible, Rigid ->
-      return (P.union v1 v2 env)
+      return (P.union v1 v2 state)
   | Rigid, Flexible ->
-      return (P.union v2 v1 env)
+      return (P.union v2 v1 state)
   | Rigid, Rigid ->
-      if P.same v1 v2 env then
-        return env
+      if P.same v1 v2 state then
+        return state
       else
         nothing
 
 
 (** Solving *)
 
-let rec solve (env: env) (formula: formula): env option =
+let rec solve (state: state) (formula: formula): state option =
   match formula with
   | Equals (v1, v2) ->
-      unify env v1 v2
+      unify state v1 v2
   | And (f1, f2) ->
-      solve env f1 >>= fun env ->
-      solve env f2
+      solve state f1 >>= fun state ->
+      solve state f2
 
 
 let _ =
-  let env = empty in
-  let x, env = bind_rigid env in
-  let y, env = bind_flexible env in
-  let z, env = bind_rigid env in
+  let state = empty in
+  let x, state = bind_rigid state in
+  let y, state = bind_flexible state in
+  let z, state = bind_rigid state in
   (* x = ?y /\ z = z *)
   let f1 = And (Equals (x, y), Equals (z, z)) in
   (* x = ?y /\ ?y = z *)
   let f2 = And (Equals (x, y), Equals (y, z)) in
-  assert (solve env f1 <> None);
-  assert (solve env f2 = None);
+  assert (solve state f1 <> None);
+  assert (solve state f2 = None);
   ()
