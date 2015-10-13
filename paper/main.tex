@@ -1,5 +1,13 @@
 \documentclass{easychair}
 
+\usepackage{fontspec}
+  \defaultfontfeatures{Mapping=tex-text}
+\usepackage{ucharclasses}
+  \setTransitionsFor{MathematicalOperators}{\begingroup\fontspec{DejaVu Sans}[Scale=MatchLowercase]}{\endgroup}
+\usepackage{xunicode}
+
+\usepackage{xltxtra}
+
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{stmaryrd}
@@ -20,7 +28,6 @@
     numberstyle=\tiny,
     numbersep=5pt,
     escapeinside={(*}{*)},
-    morekeywords={above,abstract,adopts,alias,and,as,assert,begin,below,builtin,consumes,data,do,downto,duplicable,dynamic,else,empty,end,exclusive,explain,fact,fail,flex,for,from,fun,give,if,in,let,match,mutable,open,pack,perm,preserving,rec,take,taking,then,to,type,unknown,val,value,while,with,witness},
     deletekeywords={value},
   }
 \usepackage{minted}
@@ -87,7 +94,7 @@ formula:
 
 In order to show the validity of this judgement, one usually builds a proof
 derivation using rules from the logic. In our case, the rules are given in
-\fref{logic}; $[x/y]P$ means ``substitute $x$ with $y$ in $P$''. For
+\fref{logic}, where $[x/y]P$ means ``substitute $x$ with $y$ in $P$''. For
 instance, proving Equation \ref{ex1} requires applying \Rule{ExistsE}, then
 \Rule{Refl}.
 
@@ -223,16 +230,16 @@ algorithmic trace, the user may verify the algorithm, or inspect the trace for
 debugging or feedback purposes.
 
 The library has been used, in a preliminary form, to implement the core of the
-Mezzo type-checker. This paper presents a cleaned-up, isolated version of this
-library that exposes a proper interface using monads and domain-specific
-combinators.
+Mezzo type-checker~\cite{protzenko-phd-14}. This paper presents a cleaned-up,
+isolated version of this library that exposes a proper interface using monads
+and domain-specific combinators.
 
 \subsection{An implementation with flexible variables and union-find}
 
 The logic we present is a much simplified version of the logic (type system) of
-Mezzo. In this document, we only mention the right-exists quantifier. General
-systems such as Mezzo have all four possible combinations of left/right
-exists/forall.
+Mezzo~\cite{pottier-protzenko-13}. In the present document, we only mention the
+right-exists quantifier. General systems such as Mezzo have all four possible
+combinations of left/right exists/forall.
 %
 The right-elimination of existential quantifiers, or the left-elimination of
 universal quantifiers gives \emph{flexible variables}, while the
@@ -246,7 +253,7 @@ sidetracked, talking about binders and the respective merits of De Bruijn
 \emph{vs.} locally nameless. Furthermore, we assume that all instantiations of
 flexible variables are legal. This is not true in general: for instance, if the
 goal is $\forall x, \exists \f y, \forall z.\ P$, picking $\f y = z$ makes no
-sense. Mezzo forbids this choice using \emph{levels}; in the present document,
+sense. Mezzo forbids this choice using \emph{levels}~\cite{pottier-remy-emlti}; in the present document,
 we skip this discussion altogether and assume that ``all is well''. Finally,
 although in a general setting, several rules may trigger for a given goal (this
 is the case in Mezzo), the algorithmic set of rules we use is syntax-driven: the
@@ -286,8 +293,8 @@ and var = P.point             and state = descr P.state
   \label{fig:formulas}
 \end{figure}
 
-We implement proof search in OCaml (\fref{formulas}); we implement substitutions
-using a union-find data structure. The data type of formulas
+We implement proof search in OCaml~\cite{ocaml} (\fref{formulas}); we implement substitutions
+using a union-find data structure~\cite{cormen-en,tarjan-75}. The data type of formulas
 is self-explanatory. Variables are implemented as equivalence classes in the
 \emph{persistent} union-find data structure, which the module \li+P+ implements.
 The $V, \sigma$ parameters in our rules are embodied by the \li+state+ type; just
@@ -302,9 +309,12 @@ The choice of a union-find (as opposed to explicit substitutions) is irrelevant.
 All that matters is that we pick a data structure that models substitutions, and
 that the structure be \emph{persistent}.
 
-\fref{solver} implements a solver for our minimal problem; written within the
-\li+MOption+ monad, it returns either \li+Some state+ (in case a successful
-substitution has been found), or \li+None+ if no solution exists. The solver is
+\fref{solver} implements a solver for our minimal problem; since we perform
+computations that either return a result of a failure, the code leads itself
+well to an implementation using
+monads~\cite{wadler-comprehending-92,wadler-essence-92}, in our case, the
+\li+MOption+ monad. The \li+Some state+ is for success, meaning a substitution
+has been found, while the \li+None+ case means no solution exists. The solver is
 complete.
 
 \begin{figure}
@@ -406,7 +416,7 @@ chain premises (\fref{solver}). We now need a new operator, that not only
 \emph{binds} the result (i.e. stops evaluating premises after a failure, as
 before), but also \emph{records} the premises in sequence, in order to build a
 proper derivation. The former is still faithfully implemented by the option
-monad; the latter is implemented by the writer monad.
+monad; the latter is implemented by the writer monad~\cite{jones-95-}.
 
 Computations in the writer monad return a result (of type \li+'a+) along with a log of
 elements (of type \li+L.a+). The (usual) \li+>>=+ and \li+return+ combinators operate on
@@ -839,7 +849,35 @@ It allows keeps the boilerplate to a minimum, though.
 
 \section{Related work}
 
-ZOMG TODO
+An article titled ``The Proof Monad'' already exists~\cite{kirchner-munoz-10};
+in spite of the closely related title, the article is concerned with a slightly
+different problem, namely giving an operational semantics to tactic languages
+used in theorem provers. In that sense, the article is related to
+Mtac~\cite{ziliani-13}, which is also concerned with a proper monad for writing
+tactics in Coq.
+
+Hedges~\cite{hedges-14} compares various explorations monads, notably using the
+continuation monad, the selection monad~\cite{escardo-2010} and their respective
+monad transformers. The main focus of the article seems to be the relationship
+between backtracking and game theory.
+
+Hinze~\cite{hinze-00} shows how to use the backtracking monad transformer, i.e.
+add backtracking to any existing monad. It would be interesting to determine
+whether our library can be re-implemented using a backtracking monad
+transformer, rather than the writer transformer applied to the monad of
+non-determinism. The (draft) version of the library used in Mezzo also builds
+failed derivations (as error messages) that list all attempted proofs, along
+with the first premise that failed; doing so would not be possible using
+exceptions.
+
+The \li+choice+ operator is related to polarization and
+focusing~\cite{liang-miller-07}. For instance, in the problem $\f y = x \vee \f
+y = z$, depending on which side of the disjunction the algorithm considers first,
+the outcome is going to be different. This is analogous to a synchronous phase
+(where the order of the rules matters, and where a particular choice may have
+consequences on the rest of the search). Similarly, one may swap premises
+chained by the \li+>>=+ operator, as the order doesn't matter. This is analogous
+to a asynchronous phase.
 
 \section{Conclusion}
 
@@ -863,7 +901,7 @@ or, in case of a choice, list all the failed attempts. We have not yet explained
 this last feature as a clean combination of monads and operators, but hope to do
 so in the near future.
 
-\bibliographystyle{abbrvnat}
-\bibliography{local}
+\bibliographystyle{plain}
+\bibliography{english,local}
 
 \end{document}
