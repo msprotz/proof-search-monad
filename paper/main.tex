@@ -357,18 +357,18 @@ slightly different tree that matches the rules from \fref{logic}.
   \centering
 \begin{ocaml}
 (* These two modules belong to the library. *)
-module type LOGIC = sig     module MakeProofTree (L: LOGIC) = struct
+module type LOGIC = sig     module Derivations.Make (L: LOGIC) = struct
   type formula                type derivation = L.formula * rule
   type rule_name              and rule = L.rule_name * premises
 end                           and premises = Premises of derivation list
-                            end 
+                            end
 
 (* This is the client code using modules from the library. *)
 module MyLogic = struct
   type formula = ... (* as before *)
   type rule_name = R_And | R_Refl | R_Inst
 end
-module MyProofTree = MakeProofTree(MyLogic)
+module MyDerivations = Derivations.Make(MyLogic)
 \end{ocaml}
   \caption{The functor of proof trees (library and client code)}
   \label{fig:proof-trees}
@@ -418,7 +418,7 @@ computations are wrapped in \li+MOption.m+, that is, are wrapped within an
   \centering
 \begin{ocaml}
 module WriterT (M: MONAD) (L: MONOID): sig      module L = struct
-  type 'a m = (L.a * 'a) M.m                      type a = MyProofTree.derivation list
+  type 'a m = (L.a * 'a) M.m                      type a = Derivations.derivation list
   val return: 'a -> 'a m                          let empty = []
   val ( >>= ): 'a m -> ('a -> 'b m) -> 'b m       let append = List.append
                                                 end
@@ -691,8 +691,92 @@ In particular, the earlier example of $(\f y = x \vee \f y = z) \wedge \f y = z$
 library. Thanks to laziness, no extra computations occur; further solutions down
 the lazy list are only evaluated if the first ones failed.
 
-\section{Generating a proof tree using the logical rules}
+\section{Full example: quantifiers and derivations of logical rules}
 \label{sec:generate-logical}
+
+The final section is concerned with adding quantifiers to the language, and
+generating derivation trees that reflect the rules of the \emph{logic} rather
+than the rules of the \emph{algorithm}. The former is useful for debugging the
+inner workings of the algorithm; the latter is useful for producing a proof
+certificate.
+
+\begin{figure}
+  \centering
+\begin{ocaml}
+(* Update of the [MyLogic] module. *)
+type formula =
+  (* ... *)
+  | Exists of string * formula
+  | Forall of string * formula
+
+type rule_name =
+  | R_And
+  | R_Refl of atom
+  | R_OrL
+  | R_OrR
+  | R_ExistsE of atom
+  | R_ForallE
+
+(* Update of the [Derivations] module. *)
+type derivation =
+  goal * rule
+
+and goal =
+  L.state * L.formula
+
+and (* ... *)
+
+(* Update of the [Combinators] module. *)
+let prove (goal: Logic.formula) (x: ('a * rule_name) m): 'a outcome =
+  M.(x >>= fun (premises, (env, rule)) ->
+    return (env, ((env, goal), (rule, Premises premises))))
+
+(* Update of the client. *)
+let rec solve (state: state) (goal: formula): state outcome =
+  (* ... *)
+  | Exists (atom, g) ->
+      let var, g, state = open_flexible state atom g in
+      let var = assert_open var in
+      prove goal begin
+        premise (solve state g) >>= fun state ->
+        qed (R_ExistsE (name var state)) state
+      end
+\end{ocaml}
+  \caption{Dealing with quantifiers}
+  \label{fig:quantifiers}
+\end{figure}
+
+We augment the data type of formulas with quantifiers; we replace the type of
+rules with the rules from the logic. Furthermore, we demand that the \Rule{Refl}
+and \Rule{ExistsE} rules be annotated with their argument.
+
+Bound variables are globally-unique atoms (strings); open variables are
+equivalence classes of the union-find, as before.
+
+Now, a \li+goal+ is no longer just a formula: it is a formula interpreted in a
+given state. Indeed, since we now open binders and substitute bound variables
+for open variables, reading a formula only makes sense in a state where the open
+variables of the formula are properly bound in the environment.
+
+We thus change the \li+prove+ combinator to record the state upon creating
+a new node in the derivation tree. More precisely, the \li+prove+ combinator
+records the state after the premises have been satisfied. This is exactly what
+is needed to conclude a rule; for instance, in the \li+Exists+ case, the solver
+prods the union-find state to discover the instantiation choice that
+\emph{has been made} for the existentially-quantified variable, and records it
+in the proof tree.
+
+Here is a pretty-printed version of a derivation tree. 
+
+\begin{verbatim}
+prove ∀x. ∀z. ∃y. (y = x \/ y = z) /\ y = z using [forall]
+| prove ∀z. ∃y. (y = x \/ y = z) /\ y = z using [forall]
+| | prove ∃y. (y = x \/ y = z) /\ y = z using [exists[z]]
+| | | prove (z = x \/ z = z) /\ z = z using [/\]
+| | | | prove z = x \/ z = z using [\/_r]
+| | | | | prove z = z using axiom [refl[z]]
+| | | | prove z = z using axiom [refl[z]]
+\end{verbatim}
 
 \section{Conclusion}
 

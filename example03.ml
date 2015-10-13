@@ -2,9 +2,7 @@
  * the logic, rather than the algorithmic rules. *)
 module P = PersistentUnionFind
 
-module Formula = struct
-  (** Formulas *)
-
+module MyLogic = struct
   (* Conjunctions and disjunction of equalities between variables. *)
   type formula =
     | Equals of var * var
@@ -41,8 +39,8 @@ module Formula = struct
     | R_Refl of atom
     | R_OrL
     | R_OrR
-    | R_Exists of atom
-    | R_Forall
+    | R_ExistsE of atom
+    | R_ForallE
 
   let assert_open = function
     | Open v -> v
@@ -52,7 +50,7 @@ end
 (* [MExplore] and [MOption] both work here; only [MExplore] implements
  * backtracking. *)
 module M = Combinators.MExplore
-module ProofMonad = Combinators.Make(Formula)(M)
+module ProofMonad = Combinators.Make(MyLogic)(M)
 
 open ProofMonad
 open Formula
@@ -161,13 +159,13 @@ let rec solve (state: state) (goal: formula): state outcome =
       let var = assert_open var in
       prove goal begin
         premise (solve state g) >>= fun state ->
-        qed (R_Exists (name var state)) state
+        qed (R_ExistsE (name var state)) state
       end
   | Forall (atom, g) ->
       let var, g, state = open_rigid state atom g in
       prove goal begin
         premise (solve state g) >>=
-        qed R_Forall
+        qed R_ForallE
       end
 
 
@@ -179,8 +177,8 @@ module Test = struct
       | R_And -> "/\\"
       | R_OrL -> "\\/_l"
       | R_OrR -> "\\/_r"
-      | R_Exists atom -> "exists["^atom^"]"
-      | R_Forall -> "forall"
+      | R_ExistsE atom -> "exists["^atom^"]"
+      | R_ForallE -> "forall"
       | R_Refl atom -> "refl["^atom^"]"
     in
     (* Hack alert. Not opening the variables for printing because their
