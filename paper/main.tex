@@ -7,6 +7,7 @@
 \usepackage{amsthm}
 \usepackage{hyperref}
 
+\usepackage{enumerate}
 \usepackage{tabularx}
 \usepackage{listings}
   \def\li{\lstinline}
@@ -28,12 +29,12 @@
   % Improvements to Didier's mathpartir package: make all rule names and
   % references use textsc, and also make references to rules done using the \Rule
   % command clickable in a PDF.
-  % \let\TirName\textsc
-  % \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
-  % \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
-  % \let\DefRule\RefTirName
-  % \let\Rule\DefTirName
-  \let\Rule\textsc
+  \let\TirName\textsc
+  \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
+  \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
+  \let\DefRule\RefTirName
+  \let\Rule\DefTirName
+  % \let\Rule\textsc
 
 
 \newcommand{\fref}[1]{Figure~\ref{fig:#1}}
@@ -58,16 +59,17 @@
 
 \begin{abstract}
   We present the proof search monad, a set of combinators that allows one to
-  write a proof search engine in a style that resembles closely the inference
-  rules. The user calls functions such as \li+premise+, \li+prove+ or
+  write a proof search engine in a style that resembles the formal rules
+  closely. The user calls functions such as \li+premise+, \li+prove+ or
   \li+choice+; the library then takes care of generating a derivation tree.
   Proof search engines written in this style enjoy: first, a one-to-one
-  correspondence between the implementation and the theoretical rules, which
+  correspondence between the implementation and the derivation rules, which
   makes manual inspection easier; second, proof witnesses ``for free'', which
   makes a verified, independent validation approach easier too.
 \end{abstract}
 
 \section{Theory and practice}
+\label{sec:intro}
 
 \subsection{A minimal theory}
 
@@ -83,10 +85,11 @@ formula:
   \label{ex1}
 \end{equation}
 
-In order to show the validity of this judgement, one will build a proof
-derivation using the rules from the logic, shown in \fref{logic} ($[x/y]P$ means
-``substitute $x$ with $y$ in $P$''). For instance, proving Equation \ref{ex1}
-requires applying \Rule{ExistsE}, then \Rule{Refl}.
+In order to show the validity of this judgement, one usually builds a proof
+derivation using rules from the logic. In our case, the rules are given in
+\fref{logic}; $[x/y]P$ means ``substitute $x$ with $y$ in $P$''. For
+instance, proving Equation \ref{ex1} requires applying \Rule{ExistsE}, then
+\Rule{Refl}.
 
 \begin{figure}
   \centering
@@ -137,9 +140,9 @@ use another set of \emph{algorithmic} rules, which hopefully enjoy:
 \end{description}
 
 For instance, in our logic of existentially-quantified conjunctions of
-equalities, one may want to use the algorithmic rules from
-\fref{proof-system}. These rules differ from \fref{logic} in that they are
-algorithmic; they take an input and return an output.
+equalities, one may want to use the rules from \fref{proof-system}. These rules
+differ from \fref{logic} in that they are algorithmic; they take an input and
+return an output.
 
 \begin{figure}
   \centering
@@ -187,50 +190,55 @@ considered universally quantified, hence not eligible for substitution);
 variables that may be substituted are typeset as $\f y$.
 The algorithm has internal state, that is, it carries a substitution $\sigma$.
 Upon hitting an existential quantifier $\f y$, the algorithmic rules
-\emph{open} $\f y$ and mark it as eligible for substitution. Later on (for
-instance, upon hitting $\f y = x$), the algorithm may pick a
+\emph{open} $\f y$ and mark it as eligible for substitution (\Rule{ExistsE}).
+Later on (for instance, upon hitting $\f y = x$), the algorithm may pick a
 substitution for $\f y$ using \Rule{Inst}. A substitution may be applied at any
 time (\Rule{Subst}). The preconditions of \Rule{Inst} guarantee that the
 algorithm makes at most one choice for instantiating $\f y$.
 
 In other words, the algorithmic rules \emph{defer} the \emph{instantiation} of
-the existential quantifier until the shape of the proof obligation gives us a
-\emph{hint} as to what exactly this instantiation should be. This
-\emph{implementation technique} is known as \emph{flexible variables}.
+the existential quantifier until some sub-goal, later on, gives us a \emph{hint}
+as to what exactly this instantiation should be. This \emph{implementation
+technique} is known as \emph{flexible variables}.
 
 The new algorithmic rules differ from the original logical rules significantly;
 first, there are five rules for the algorithmic system, compared to just three
 for the logical system. Second, these five rules do not map trivially to their
-counterparts in the logical system. Third, these rules are only
-algorithmic; the implementation that we are about to roll out uses an
-optimized representation for substitutions (union-find), meaning that one not
-only needs to check that the algorithmic rules are faithful to the logical
-rules, but also that the implementation is faithful to the algorithmic rules.
+counterparts in the logical system. Third, these rules are still very much
+abstract; the implementation that we are about to roll out uses an
+optimized representation for substitutions (union-find) that is not formalized
+in \fref{proof-system}. Phrased differently, one not only needs to check that
+the algorithmic rules are faithful to the proof rules, but also that the
+implementation itself is faithful to the algorithmic rules.
 
 This paper presents a library that allows one to write an implementation of the
 algorithmic rules while automatically generating a derivation. The library
 forces the client code to lay out premises, rule applications and
 instantiations. The level of detail of the resulting derivation is left up to
-the client code; they may wish to record the very compact rules from the logic,
-or record more proof steps using the algorithmic rules. In any case, the
-derivation serves as a proof witness; if the user wishes to do so, they can
-write a validator that takes the witness and verifies that the derivation is,
-indeed, correct.
+the client code; the user may wish to record a proof derivation using the proof
+rules, or record a trace of the algorithm using the algorithmic rules.  In any
+case, the derivation serves as a witness; in the case of a proof derivation, a
+validator may certify that the proof is valid, while in the case of an
+algorithmic trace, the user may verify the algorithm, or inspect the trace for
+debugging or feedback purposes.
 
 The library has been used, in a preliminary form, to implement the core of the
 Mezzo type-checker. This paper presents a cleaned-up, isolated version of this
-library.
+library that exposes a proper interface using monads and domain-specific
+combinators.
 
 \subsection{An implementation with flexible variables and union-find}
 
-The logic we present is a much simplified version of the logic (type system)
-of Mezzo. In particular, this paper only mentions the right-exists quantifier;
-Mezzo has all four possible combinations of left/right exists/forall. Generally,
-in proof search, \emph{flexible variables} stem from the right-elimination of
-existential quantifiers, or the left-elimination of universal quantifiers. The
+The logic we present is a much simplified version of the logic (type system) of
+Mezzo. In this document, we only mention the right-exists quantifier. General
+systems such as Mezzo have all four possible combinations of left/right
+exists/forall.
+%
+The right-elimination of existential quantifiers, or the left-elimination of
+universal quantifiers gives \emph{flexible variables}, while the
 right-elimination of universal quantifiers, or the left-elimination of
-existential quantifiers give rise to universally-quantified variables, which are
-called \emph{rigid}.
+existential quantifiers gives universally-quantified variables, also called
+\emph{rigid variables}.
 
 In order to simplify the problem, we assume that all existential variables have
 been introduced as flexible variables already. That way, we won't be
@@ -259,9 +267,11 @@ always evaluates to false ($x$ and $z$ are two distinct rigid variables).
 Once the algorithm has run, we obtain an output substitution $\sigma$. One can, if they
 wish to do so, take the reflexive-transitive closure $\sigma^*$, and apply it to
 a flexible variable (say, $\f y$) to recover the parameter of \Rule{ExistsE}
-that should be used in the logical rules (here, $x$). This is all very informal
--- the point of the subsequent sections is to formalize the claim that the proof
-search algorithm produces a proof witness.
+that should be used in the logical rules (here, $x$). This way of checking
+correctness is not satisfactory and does not scale if nested quantifiers appear
+in the goal; the point of the subsequent sections is to make sure the search
+algorithm produces a proper proof witness (derivation) that has a tree-like
+structure and does not leak implementation details (such as substitutions).
 
 \begin{figure}
   \centering
@@ -276,23 +286,21 @@ and var = P.point             and state = descr P.state
   \label{fig:formulas}
 \end{figure}
 
-We implement proof search in OCaml (\fref{formulas}); we do not use explicit
-substitutions, but rather an optimized representation based on a union-find data
-structure. The data type of formulas
-is self-explanatory. Variables are implemented as equivalence classes in a
+We implement proof search in OCaml (\fref{formulas}); we implement substitutions
+using a union-find data structure. The data type of formulas
+is self-explanatory. Variables are implemented as equivalence classes in the
 \emph{persistent} union-find data structure, which the module \li+P+ implements.
 The $V, \sigma$ parameters in our rules are embodied by the \li+state+ type; just
 like the $\sigma$ parameter is chained from one premise to another (\Rule{And}),
 \li+state+ is an input and an output to the solver. Just like the $\sigma$ parameter
 in the rules, a \li+state+ of the persistent union-find represents
-a set of equations between variables. In a sense, \li+state+ is a specific
-implementation of the theoretical $\sigma$ parameter. It represents a
-substitution; in other words, this is what we want our solver to compute.
+a set of equations between variables. The algorithmic rules mentioned a
+theoretical $\sigma$ parameter; the \li+state+ is our specific implementation
+choice.
 
-The choice of a union-find is irrelevant. All that matters is that we
-pick a data structure that models substitutions, and that is \emph{persistent}.
-Had we picked an explicit substitution instead of a union-find, the rest of the
-discussion would have been the same.
+The choice of a union-find (as opposed to explicit substitutions) is irrelevant.
+All that matters is that we pick a data structure that models substitutions, and
+that the structure be \emph{persistent}.
 
 \fref{solver} implements a solver for our minimal problem; written within the
 \li+MOption+ monad, it returns either \li+Some state+ (in case a successful
@@ -306,7 +314,7 @@ module MOption = struct
   (* ... defines [return], [nothing] and [>>=] *)
 end
 
-let unify state v1 v2 =                         let rec solve state formula =
+let unify state v1 v2: state =                  let rec solve state formula: state =
   match P.find v1 state, P.find v2 state with     match formula with
   | Flexible, Flexible                            | Equals (v1, v2) ->
   | Flexible, Rigid ->                                unify state v1 v2
@@ -329,6 +337,7 @@ first premise evaluates to \li+nothing+, the second premise is not evaluated,
 since it is suspended behind a \li+fun+ expression (OCaml is a strict language).
 
 \section{Building derivations}
+\label{sec:derivations}
 
 There are two shortcomings with this solver. First, the \li+unify+ sub-routine
 conflates several rules together. Indeed, the \li+return (P.union ...)+
@@ -349,9 +358,10 @@ that effect, we define the data type of all three rules in our system, which we
 apply to the functor of \emph{proof trees} (\fref{proof-trees}).
 
 We record applications of \Rule{Inst}, \Rule{Refl} and \Rule{And}. This produces
-a derivation tree that makes sure that the algorithm follows the algorithmic
-rules from \fref{proof-system}. \sref{generate-logical} shows how to generate a
-slightly different tree that matches the rules from \fref{logic}.
+a derivation tree (algorithm trace) that makes sure that the algorithm follows
+the algorithmic rules from \fref{proof-system}. \sref{generate-logical} shows
+how to generate a different, more compact tree that matches the rules from
+\fref{logic}.
 
 \begin{figure}
   \centering
@@ -385,9 +395,9 @@ number of premises (0 for \Rule{Refl}, 1 for
 
 In the (simplified) sketch from \fref{proof-trees}, rule names are just constant
 constructors, since the rule parameters (such as $x$ and $\f y$ in \Rule{Inst})
-can be recovered from the \li+formula+. In the general case, the various
-constructors of \li+rule_name+ do have parameters that record how one specific
-rule was instantiated.
+can be recovered from the \li+formula+. In the general case
+(\sref{generate-logical}), the various constructors of \li+rule_name+ do have
+parameters that record how one specific rule was instantiated.
 
 \subsection{Proof tree combinators}
 
@@ -401,18 +411,14 @@ monad; the latter is implemented by the writer monad.
 Computations in the writer monad return a result (of type \li+'a+) along with a log of
 elements (of type \li+L.a+). The (usual) \li+>>=+ and \li+return+ combinators operate on
 the result part of the computation, while the (new) \li+tell+ combinator
-operates on the logging part of the computation. This \li+tell+ combinator
-appends a new element to the log. Appending elements to the log is done by way of the \li+MONOID+
-module type, which essentially demands a value for the empty log, and a function to
-append new entries into the log.
+operates on the logging part of the computation. The \li+tell+ combinator
+appends a new element to the log; this is done by way of the \li+MONOID+ module
+type, which essentially demands a value for the \li+empty+ log, and a function
+to \li+append+ new entries into the log.
 
 In order to get a new \li+>>=+ operator that combines the features of
 the option and writer monads, we apply the \li+WriterT+ monad transformer to the
-\li+MOption+ monad (\fref{writer}) and obtain \li+MWriter+, a monad whose
-computations represent a sequence of derivations (the premises we have proved so far)
-along with a result (the \li+state+ that we chain through the premises). These
-computations are wrapped in \li+MOption.m+, that is, are wrapped within an
-\li+option+ to account for a possible proof failure.
+\li+MOption+ monad (\fref{writer}) and obtain \li+MWriter+.
 
 \begin{figure}
   \centering
@@ -432,14 +438,13 @@ module MWriter = WriterT(M)(L)
   \label{fig:writer}
 \end{figure}
 
-A computation within this new monad has type (simplified after functor applications)
-\li+(derivation list * state) option+. It represents a given point in the proof;
-the solver is focused on a given rule, has reached a certain state, after
-proving a certain list of premises.
-
-We provide a convenience \li+qed+ combinator: once one has obtained the final
-state, it pairs the state with the name of the rule we want to conclude with. It
-makes the implementation of \li+solve+ (\fref{solver2}) more elegant.
+The type of computations \li+'a MWriter.t+ boils down (after functor
+application) to \li+(derivation list * state) option+. A computation in the monad
+represents a given point in the proof; the solver is focused on a rule; has
+proved a number of premises so far (the \li+derivation list+); has reached a
+certain \li+state+ (threaded through the premises). The \li+option+ type
+accounts for failure; in case a premise cannot be proved, the computation aborts
+and becomes \li+None+.
 
 Once all the premises have been proven, one needs to draw a horizontal line and
 reach the conclusion of the proof. That is, take the final state and the list of
@@ -449,11 +454,12 @@ entire rule.
 Contrary to the first implementation (\fref{solver}), where the working state
 and the return value of \li+solve+ both had type \li+state option+, we now
 distinguish between an \li+outcome+ (the result of a call to \li+solve+) and a
-working state (a computation in the monad).
+working state (a computation in the \li+MWriter+ monad).
 
-An outcome is, as we mentioned earlier, the pair of a final \li+state+ along
+An \li+outcome+ is the pair of a final \li+state+ along
 with a \li+derivation+ that justifies that we reached this state. The pair is
-wrapped in \li+M.t+ (here, \li+option+): proving a formula may fail.
+wrapped in \li+M.t+ (here, \li+option+): if the computation of premises is a
+failure, then the proof of the desired goal is a failure too.
 
 The type \li+outcome+ (\fref{combinators}) is parametric: it works for any
 state that the client code uses. In other words, our library is generic with
@@ -491,7 +497,7 @@ let fail: 'a outcome =
 \end{figure}
 
 We now have a duality between the \li+outcome+ type (the result of solving a
-sub-goal) and the \li+m+ type (a computation within the monad, i.e. a working
+goal) and the \li+m+ type (a computation within the monad, i.e. a working
 state between two premises). Therefore, we introduce two high-level combinators:
 \li+premise+ and \li+prove+. The former goes from \li+outcome+ to \li+m+: it
 injects a new sub-goal as a premise of the rule we are currently trying to
@@ -513,6 +519,11 @@ tree.
   \item \li+axiom+ is short-hand for a rule that requires no premises.
 
   \item \li+fail+ is for situations where no rule applies: this is a failed outcome.
+
+  \item \li+qed+ is a convenience combinator that pairs the state with the name
+    of the rule we want to conclude with; it makes the implementation of
+    \li+solve+ (\fref{solver2}) more elegant.
+
 \end{itemize}
 
 \subsection{A solver in the new style}
@@ -568,6 +579,7 @@ let rec solve (state: state) (goal: formula): state outcome =
 \end{figure}
 
 \section{Backtracking}
+\label{sec:backtracking}
 
 \subsection{Limitations of the option monad}
 
@@ -575,11 +587,11 @@ We now extend our formulas with disjunctions (\fref{choice}). A consequence
 is that we now need our base monad \li+M+ to offer a new operation; namely, one
 that, among several possible choices, picks the first one that is not a failure.
 We thus augment \li+MOption+ with a search combinator (\fref{choice}), which in
-turn allows one to implement a high-level \li+choice+ combinator for our
+turn allows us to implement a high-level \li+choice+ combinator for our
 library. The \li+choice+ combinator attempts to prove a \li+goal+ by trying a
-function \li+f+ on several arguments \li+a+, each of which
-is associated to a given rule. We can add one more branch to the \li+solve+
-function, which attempts to prove a disjunction by first trying a
+function \li+f+ on several arguments of type \li+a+, each of which
+has a given \li+outcome+. We extend \li+solve+ with an extra case,
+which attempts to prove a disjunction by first trying a
 left-elimination (\Rule{Or-L}, \fref{proof-system2}), then a right-elimination
 (\Rule{Or-R}).
 
@@ -691,19 +703,39 @@ In particular, the earlier example of $(\f y = x \vee \f y = z) \wedge \f y = z$
 library. Thanks to laziness, no extra computations occur; further solutions down
 the lazy list are only evaluated if the first ones failed.
 
-\section{Full example: quantifiers and derivations of logical rules}
+\section{Extension: quantifiers and proof trees}
 \label{sec:generate-logical}
 
-The final section is concerned with adding quantifiers to the language, and
-generating derivation trees that reflect the rules of the \emph{logic} rather
-than the rules of the \emph{algorithm}. The former is useful for debugging the
-inner workings of the algorithm; the latter is useful for producing a proof
-certificate.
+We mentioned earlier that the derivation we were building tracked the
+application of algorithmic rules; that is, we were building a \emph{trace} of
+the algorithm. While the trace is useful to extract information for the user,
+one may also want to build a proper proof witness in order to certify the
+validity of the formula.
+
+In order to make a proof tree relevant and not just provide the substitution as
+the proof witness, we introduce quantifiers to the language, and construct proof
+trees that apply the proof rules from \fref{logic}, \fref{proof-system2},
+\fref{logic-quantifiers}. The nodes of the proof tree are rules; each node is
+annotated, if applicable, by its implicit parameters. That is, \Rule{Refl} and
+\Rule{ExistsE} are annotated with their implicit $x$ parameter.
+
+\begin{figure}
+  \centering
+  \begin{mathpar}
+    \inferrule[ForallE]{
+      P
+    }{
+      \forall y.\ P
+    }
+  \end{mathpar}
+  \caption{Extra rule for the universal quantifier}
+  \label{fig:logic-quantifiers}
+\end{figure}
 
 \begin{figure}
   \centering
 \begin{ocaml}
-(* Update of the [MyLogic] module. *)
+(* i) Update of the [MyLogic] module. *)
 type formula =
   (* ... *)
   | Exists of string * formula
@@ -717,7 +749,7 @@ type rule_name =
   | R_ExistsE of atom
   | R_ForallE
 
-(* Update of the [Derivations] module. *)
+(* ii) Update of the [Derivations] module. *)
 type derivation =
   goal * rule
 
@@ -726,12 +758,12 @@ and goal =
 
 and (* ... *)
 
-(* Update of the [Combinators] module. *)
+(* iii) Update of the [Combinators] module. *)
 let prove (goal: Logic.formula) (x: ('a * rule_name) m): 'a outcome =
   M.(x >>= fun (premises, (env, rule)) ->
     return (env, ((env, goal), (rule, Premises premises))))
 
-(* Update of the client. *)
+(* iv) Update of the client. *)
 let rec solve (state: state) (goal: formula): state outcome =
   (* ... *)
   | Exists (atom, g) ->
@@ -746,27 +778,39 @@ let rec solve (state: state) (goal: formula): state outcome =
   \label{fig:quantifiers}
 \end{figure}
 
-We augment the data type of formulas with quantifiers; we replace the type of
-rules with the rules from the logic. Furthermore, we demand that the \Rule{Refl}
-and \Rule{ExistsE} rules be annotated with their argument.
+The updates to the library required to implement quantifiers are minimal; the
+bulk of the work is essentially writing substitution and a proper treatment of
+binders on the client-side.
 
-Bound variables are globally-unique atoms (strings); open variables are
-equivalence classes of the union-find, as before.
+\fref{quantifiers} presents in an informal style the series of updates
+required.
+\begin{enumerate}[i)]
+  \item We augment the data type of formulas with quantifiers; we replace the
+    type of rules with the rules from the logic. Furthermore, we demand that the
+    \Rule{Refl} and \Rule{ExistsE} rules be annotated with their argument.
 
-Now, a \li+goal+ is no longer just a formula: it is a formula interpreted in a
-given state. Indeed, since we now open binders and substitute bound variables
-for open variables, reading a formula only makes sense in a state where the open
-variables of the formula are properly bound in the environment.
+    Bound variables are globally-unique atoms (strings); open variables are
+    equivalence classes of the union-find, as before (not shown here).
 
-We thus change the \li+prove+ combinator to record the state upon creating
-a new node in the derivation tree. More precisely, the \li+prove+ combinator
-records the state after the premises have been satisfied. This is exactly what
-is needed to conclude a rule; for instance, in the \li+Exists+ case, the solver
-prods the union-find state to discover the instantiation choice that
-\emph{has been made} for the existentially-quantified variable, and records it
-in the proof tree.
+  \item We previously did not distinguish between a \li+goal+ and a
+    \li+formula+; this was only possible because we assumed all variables were
+    initially open, meaning that we could deference an open variable in any
+    \li+state+. Now, we open binders and substitute variables, through the
+    allocation of new points in the union-find (the \li+state+). Therefore, a
+    given \li+formula+ only makes sense when paired with a specific \li+state+.
 
-Here is a pretty-printed version of a derivation tree. 
+  \item We update the \li+prove+ combinator to record the \li+state+ upon
+    creating a new node in the derivation tree. More precisely, the \li+prove+
+    combinator records the \li+state+ after the premises have been satisfied.
+
+  \item Only a slight is needed on the client side to record a proper proof
+    witness: in the \li+Exists+ case, the solver prods the union-find state to
+    discover the instantiation choice that \emph{has been made} for the
+    existentially-quantified variable, and records it in the proof tree.
+\end{enumerate}
+
+The sample code in the library comes with a pretty-printer. Here is the output
+for a simple formula that combines all features from our formula language.
 
 \begin{verbatim}
 prove ∀x. ∀z. ∃y. (y = x \/ y = z) /\ y = z using [forall]
@@ -778,11 +822,31 @@ prove ∀x. ∀z. ∃y. (y = x \/ y = z) /\ y = z using [forall]
 | | | | prove z = z using axiom [refl[z]]
 \end{verbatim}
 
+\section{Source code}
+
+The library is available online at
+\url{https://github.com/msprotz/proof-search-monad}. The file \li+example01.ml+
+contains the full implementation of the primitive solver described in
+\sref{intro}. The file \li+example02.ml+ contains the backtracking solver
+written within the proof search monad, as described in \sref{backtracking}. One
+can get the non-backtracking version, described in \sref{derivations}, by
+replacing \li+MExplore+ with \li+MOption+. Finally, the file \li+example03.ml+
+contains the final algorithm described in \sref{generate-logical}. The
+representation of binders adopted in the last example is suboptimal; bound
+variables are represented using globally-unique atoms. One may want to use
+locally nameless, with De Bruijn indices for bound variables (as used in Mezzo).
+It allows keeps the boilerplate to a minimum, though.
+
+\section{Related work}
+
+ZOMG TODO
+
 \section{Conclusion}
 
-We presented a support library for writing a proof search engine using backtracking in
-any given logic; indeed, the library is parameterized by: the type of formulas; the type of
-rule applications; the internal state type of the client. By merely using the
+We presented a support library for writing a proof search engine using
+backtracking. The library is parameterized by: the type of formulas; the type of
+rule applications; the internal state type of the client. This leaves complete
+freedom for the client to define their own logic. By merely using the
 combinators of the library, the client gets derivations built for free; this allows
 a separate verifier to independently check the steps required to prove the
 formula. By opting into the library, the client gets to rewrite their code in a
