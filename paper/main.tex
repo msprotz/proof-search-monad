@@ -37,9 +37,9 @@
   % references use textsc, and also make references to rules done using the \Rule
   % command clickable in a PDF.
   \let\TirName\textsc
-  \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
+  % \renewcommand{\RefTirName}[1]{\hypertarget{#1}{\TirName {#1}}}
   \renewcommand{\DefTirName}[1]{\hyperlink{#1}{\TirName {#1}}}
-  \let\DefRule\RefTirName
+  % \let\DefRule\RefTirName
   \let\Rule\DefTirName
   % \let\Rule\textsc
 
@@ -77,6 +77,17 @@
 
 \section{Theory and practice}
 \label{sec:intro}
+
+This paper attempts to present, in a tutorial-style, the design of an OCaml
+library. In order to facilitate the discussion, we focus on a very constrained
+logic; later (\sref{extending}), we mention how to extend the library to
+cover more use-cases. The original motivation for the library was to serve as a
+core building block for the type-checker of Mezzo~\cite{protzenko-phd-14}. The
+nature of the core, minimal logic that we are about to present is, of course,
+inspired by typical nature of type-checking problems: it features equality,
+quantifiers, and positive literals; \sref{extending} mentions how to extend it
+with function symbols and variance (negative positions), as is typical for
+type-checking problems.
 
 \subsection{A minimal theory}
 
@@ -563,6 +574,7 @@ let rec prove_equality (state: state) (goal: formula) (v1: var) (v2: var) =
   | Flexible, Rigid ->
       let state = P.union v1 v2 state in
       prove goal begin
+        (* Recursive call reduces to the [axiom ... R_Refl] case below. *)
         premise (prove_equality state goal v1 v2) >>=
         qed R_Instantiate
       end
@@ -832,6 +844,53 @@ prove ∀x. ∀z. ∃y. (y = x \/ y = z) /\ y = z using [forall]
 | | | | prove z = z using axiom [refl[z]]
 \end{verbatim}
 
+\section{Extending the library; extending the logic; limitations}
+\label{sec:extending}
+
+The approach advocated in the present paper works well for sequent-style
+calculi; in the context of Mezzo, the logic is extended with the following extra
+features:
+\begin{itemize}
+  \item function symbols, such as, but not limited to: ML arrow types ($\to$),
+    type applications ($\mathsf{list}\ \alpha$), constructor applications
+    ($\mathsf{Cons}\;\{ \mathsf{head}:\alpha;\ \mathsf{tail}:\mathsf{list}\
+    \alpha\}$)
+  \item positive and negative positions (also known as ``variance'' in
+    type-checking lingo; this applies to function symbols, such as arrows or
+    type constructors)
+  \item higher-order quantification ($\forall (p: \mathsf{predicate}) \ldots$)
+  \item affinity (where some hypothesis may be used at most once)
+  \item framing, which bears some similarities with focusing.
+\end{itemize}
+
+This in turn requires the client code to keep track of more information, while
+also adopting more sophisticated data structures. In particular, the client code
+now carries, in addition to a substitution (\emph{a.k.a.} union-find), a
+\emph{set} of available hypotheses, which flows left-to-right in the algorithmic
+rules. Changing polarities changes the direction of the flow.
+
+For the complete system (Mezzo), there are many more backtracking points. The
+client code choses to backtrack on only a subset of them.
+
+A limitation of this library is that it only works as long as every branch of
+the exploration terminates; contrary to Kiselyov \emph{et al}.'s
+library~\cite{oleg05}, we do not implement fair interleaving. One could
+conceivably bound the depth of the search tree, but the exploration of the tree
+remains sequential, not concurrent.
+
+If one is willing to give up on modularity, stronger static guarantees can be
+attained by making the \li+rule_name+ type more specific; namely, by encoding in
+each constructor the number of premises required. The drawback is that the
+library now has to be aware of the specific logic; in the current state of
+things, the library is completely agnostic with regards to the client code's
+particular logical system.
+
+It is unclear how one could memoize the sub-computations; the state of the
+client code (the union-find) may not change very much in the simplified logic
+presented here; however, for a more evolved logic, it is likely that the client
+state evolves monotonically, and makes memoizing difficult, as the result of
+sub-calls depends very much on the state.
+
 \section{Source code}
 
 The library is available online at
@@ -900,6 +959,14 @@ failed derivations; these failed derivations stop at the first failed premise
 or, in case of a choice, list all the failed attempts. We have not yet explained
 this last feature as a clean combination of monads and operators, but hope to do
 so in the near future.
+
+\section*{Acknowledgments}
+
+I wish to thank Gabriel Scherer who helped me sketch the initial version of the
+library; François Pottier for motivating me enough that I would want to write
+about it, as well as providing the persistent union-find implementation; and
+Anonymous Review \#2 for a very high quality review with numerous excellent
+suggestions.
 
 \bibliographystyle{plain}
 \bibliography{english,local}
