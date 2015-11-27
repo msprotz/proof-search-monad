@@ -1,0 +1,798 @@
+\documentclass[final,xetex]{beamer}
+
+\input{talks/common/macros.tex}
+\input{papers/common/macros.tex}
+\input{bubbles.tex}
+
+% ------------------------------------------------------------------------------
+
+\usepackage{ucharclasses}
+  \setTransitionsFor{Dingbats}{\begingroup\fontspec{DejaVu Sans}[Scale=MatchLowercase]}{\endgroup}
+\usepackage{multirow}
+\usepackage{mathtools}
+\usepackage[normalem]{ulem}
+
+%\def\mintedusecache{}
+\def\mintedwritecache{}
+
+% ------------------------------------------------------------------------------
+
+\newcommand{\sidenote}[1]{
+\raggedleft
+\footnotesize
+\itshape
+#1
+}
+
+\newcommand{\statement}[1]{
+  \begin{frame}[plain]
+  \begin{center}
+    \Large
+    \textcolor{skyblue3}{
+    #1
+    }
+  \end{center}
+  \end{frame}
+}
+
+\newcommand{\V}{\ensuremath{\mathcal{V}}} % The prefix
+\newcommand{\R}{\ensuremath{\mathcal{R}}} % Rigid
+\newcommand{\F}{\ensuremath{\mathcal{F}}} % Flexible
+
+% ------------------------------------------------------------------------------
+
+\TangoColors
+\mode<presentation> {
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{items}[circle]
+  \setbeamercolor*{Title bar}{bg=white,fg=chameleon3}
+  \setbeamersize{text margin left=2em}
+  \setbeamertemplate{footline}{
+    \leavevmode%
+    \hbox{%
+    \begin{beamercolorbox}[wd=.3\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor\ —\ \insertshortinstitute
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.4\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.3\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+    \vskip0pt%
+  }
+}
+
+\title[The Proof Search Monad]{
+  Functional Pearl: the Proof Search Monad
+}
+\author[J. Protzenko]{
+  \newauthor{Jonathan Protzenko}{protz@microsoft.com}
+}
+
+\institute{Microsoft Research}
+\date{Nov. 23th, 2015}
+
+\begin{document}
+
+\begin{frame}
+  \begin{center}
+    {\raggedright\large (functional pearl)\\
+    \Huge\vspace{.2em}
+    \hspace{1.2em}\green{\emph{the Proof Search Monad}}}
+  \end{center}
+
+  \vspace{3cm}
+
+    Jonathan Protzenko (Microsoft Research)\\
+    \scriptsize
+    \texttt{protz@microsoft.com}
+\end{frame}
+
+\begin{frame}{The Proof Search Monad}
+  A \green{library} developed to implement the type-checker of \mezzo.
+
+  \bigskip
+
+  In this talk:
+  \begin{itemize}
+    \item what is \mezzo (from a very high-level)
+    \item generalize (when is this library suitable)
+    \item the library itself (combinators and implementation).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[plain]
+  \backupslide
+  \MzTitle{Where it all came from}
+\end{frame}
+
+\begin{frame}{My thesis in one slide}
+  ``Separation logic as a type system''. % who's familiar with it?
+
+  \begin{itemize}
+    \item \green{\mezzo}: \emph{barely} a type system
+      {\tiny(flow-sensitive, structural information, keeps track of local
+      aliasing)}
+    \item Hindley-Milner: \green{nope}
+    \item Because: \green{undecidable} {\tiny(System F, entailment, framing,
+      higher-order logic)}
+    \item But: we \emph{still} want \green{inference}
+    \item So: \emph{\green{heuristics}} (it ``mostly'' works)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Flow-sensitivity}
+
+  \mezzo has \green{permissions}, of the form $\tyatomic xt$, separated by
+  $\ast$.
+
+  \bigskip
+
+  \begin{description}[\hspace{10em}]
+    \item[In ML:] $\Gamma = x: t, y: u$
+    \item[In \mezzo:] $P = \tyatomic xt \ast \tyatomic yu$
+  \end{description}
+
+  \bigskip
+
+  \bigskip
+
+  \MzStartBubbles
+\begin{mzcode}
+val f (x: ...): ... = #\MzProgramPoint#
+  let y = ... in #\MzProgramPoint#
+  ...#\MzProgramPoint#
+\end{mzcode}
+
+  \MzStartBubbles
+  \MzAutoBubble{2em}{2em}{1cm}{}{%
+    P₁
+  }
+  \MzAutoBubble{0em}{3em}{1cm}{}{%
+    P₂
+  }
+  \MzAutoBubble{2em}{-2em}{1cm}{}{%
+    P₃
+  }
+
+  \bigskip
+
+  \bigskip
+
+  \only<5>{
+  This allows keeping track of \green{ownership}.
+  }
+
+\end{frame}
+
+\begin{frame}[fragile]{Why ownership?}
+  At each program point, the programmer knows which objects they own, and how
+  they own them.
+  Ownership is either shared (duplicable) or unique (exclusive).
+
+  \vfill
+
+  \begin{description}
+    \item[Data-race freedom]
+      \emph{Mutable} objects have a unique owner. Therefore, at most one thread
+      may mutate an object at any given time. \mezzo programs are data-race
+      free.
+    \item[State change]
+      If I'm the sole owner of an object, I'm allowed to break its invariants
+      (type). Important because of fine-grained aliasing tracking.
+  \end{description}
+\end{frame}
+
+\begin{frame}[fragile]{Ownership example}
+
+  Data-race \green{freedom} \emph{and} \green{state change}.
+
+  \bigskip
+
+  \bigskip
+
+  \begin{mzcode}
+let r = newref x in
+(* r @ Ref { contents = x } *)
+r := y;
+(* r @ Ref { contents = y } *)
+  \end{mzcode}
+
+\end{frame}
+
+\begin{frame}{A rich type system\ldots}
+  \begin{description}[\hspace{10.2em}]
+    \item[Singleton types] \code{x @ (=y)}: \code{x} \green{is} \code{y}
+      \\ Written as: $x = y$
+    \item[Constructor types] \code{xs @ Cons \{ head: t; tail: u \}}
+      (special-case: \code{t} is a singleton, we write
+      \code{xs @ Cons \{ head = …; tail = … \}})
+    \item[Decomposition] via \green{unfolding} (named fields),
+      \green{refinement} (matching) and \green{folding} (subtyping)
+    \item[Several possible types] \code{x @ (int, int)},\\
+      \code{x @ ∃(y,z: value).\\~~(=y | y @ int, =z | z @ int)},
+      \\\code{x @ ∃t.t}, etc.
+  \end{description}
+\end{frame}
+
+\begin{frame}{\ldots that still isn't quite a logic}
+  \mezzo remains a type system.
+  \begin{itemize}
+    \item far less connectives and rules
+    \item $\tyatomic f{\tyarrow tu} \ast \tyatomic xt \not\leq
+      \tyexists y\kterm {\tyatomic yu}$ (no implicitly callable ghost functions)
+    \item no built-in disjunction (only tagged sums)
+  \end{itemize}
+
+  \bigskip
+
+  \mezzo's type system feels like a limited fragment of \green{intuitionistic
+  logic}.
+\end{frame}
+
+\begin{frame}{Subtraction: an unusual algorithm}
+  \begin{itemize}
+    \item Subtyping needs to be decided for \green{function calls} and for
+      \green{function bodies}.
+    \item %Subsumption rules allow instantiating quantifiers \green{implicitly}:
+      Blurs the frontier between type-checking and logics.
+    \item %Hence,
+      The subtyping algorithm \emph{has to} \green{perform
+      inference}%: introducing existentials in the goal, introducing universals
+      %in the hypothesis (current permission).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{More about subtraction}
+  The operation is written $P - Q = R$ and assumes $P$ has been
+  \emph{normalized} (all left-invertible rules have been applied).
+
+  \bigskip
+  \bigskip
+  \bigskip
+
+
+  {\Large
+  \[
+    \tikz[remember picture, baseline=-0.65ex] \node(sub-v) {$\mathcal{V}$};
+    (
+    \tikz[remember picture, baseline=-0.65ex] \node(sub-p) {P};
+    -
+    \tikz[remember picture, baseline=-0.65ex] \node(sub-q) {Q};
+    ) =
+    \tikz[remember picture, baseline=-0.65ex] \node(sub-vp) {$\mathcal{V'}$};
+    \tikz[remember picture, baseline=-0.65ex] \node(sub-r) {R};
+  \]
+  }
+  \begin{tikzpicture}[
+    remember picture,
+    overlay
+  ]
+    % V
+    \node[
+      draw, ultra thick, aluminium5, ellipse, fill=aluminium1
+    ] (label-v) at ($(sub-v)+(-3em,-2em)$) {Binders};
+    \draw[
+      ultra thick, aluminium5, ->
+    ] (label-v.north) to [out=90,in=180] (sub-v.west);
+    \draw[
+      ultra thick, aluminium5, ->
+    ] (label-v.east) to [out=0,in=270] (sub-vp.south);
+
+    % P
+    \node[
+      draw, ultra thick, aluminium5, ellipse, fill=aluminium1
+    ] (label-p) at ($(sub-p)+(-3em,3em)$) {Hypothesis};
+    \draw[
+      ultra thick, aluminium5, ->
+    ] (label-p.south) to [out=270,in=90] (sub-p.north);
+
+    % Q
+    \node[
+      draw, ultra thick, aluminium5, ellipse, fill=aluminium1
+    ] (label-q) at ($(sub-q)+(3em,3em)$) {Goal};
+    \draw[
+      ultra thick, aluminium5, ->
+    ] (label-q.south) to [out=270,in=90] (sub-q.north);
+
+    % R
+    \node[
+      draw, ultra thick, aluminium5, ellipse, fill=aluminium1
+    ] (label-r) at ($(sub-r)+(3em,-2em)$) {Remainder};
+    \draw[
+      ultra thick, aluminium5, ->
+    ] (label-r.north) to [out=90,in=0] (sub-r.east);
+
+  \end{tikzpicture}
+
+  \bigskip
+  \bigskip
+
+  This means:\\
+  \qquad``with the instantiation choices from $\V'$, we get $P \leq Q \ast R$''.
+
+\end{frame}
+
+\begin{frame}{Subtraction example (1)}
+  In order to type-check the application $f\ x$, we ask:
+  \[
+    P - \tyatomic f{\tyarrow {\alpha}{\beta}} \ast
+        \tyatomic x{\alpha}\quad=\quad?
+  \]
+
+  \bigskip
+
+  The algorithm must guess $\alpha$, $\beta$, and the remainder.
+\end{frame}
+
+\begin{frame}{Subtraction example (2)}
+  \[
+  \begin{array}{ll}
+  & \tyatomic \ell{\tyconcrete \kcons{ \khead = h; \ktail = t }} \ast \\
+  &\tyatomic h{\tyref\tyint} \ast \tyatomic t{\tylist {(\tyref\tyint)}} \\
+  - \quad \\
+  &\tyatomic \ell{\tylist{(\tyref\tyint)}} \\
+  =  \quad\\
+  &\tyatomic \ell{\tyconcrete \kcons{ \khead = h; \ktail = t }}
+\end{array}
+  \]
+\end{frame}
+
+\begin{frame}{Subtraction example (3)}
+ \[
+  \begin{array}{ll}
+  & \tyatomic z{\exists\alpha, \forall\beta. (\alpha, \beta)} \\
+  - \quad \\
+  & \tyatomic z{\exists\alpha', \forall\beta'. (\alpha', \beta')} \\
+  = \quad \\
+  & ?
+  \end{array}
+\]
+\end{frame}
+
+\begin{frame}{Backtracking}
+  Inference uses \emph{flexible} variables.
+
+  \bigskip
+
+  There may be \green{several solutions}:
+  \[
+  \tyatomic x\tyint - \tyatomic x\alpha =
+  \tyatomic x\tyint\quad\text{ with }\quad
+  \begin{cases}
+    \alpha = \tyint \\
+    \alpha = \tysingleton x \\
+    \alpha = \top
+  \end{cases}
+  \]
+  Not all solutions are explored: $\alpha$ could be $\tybar\beta p$.
+
+  \bigskip
+
+  There are many other backtracking points: right-introduction \emph{vs.}
+  left-introduction, which atomic permission to focus\ldots
+\end{frame}
+
+\begin{frame}[fragile]{How to implement all that?}
+  A module that takes care of running the proof search and providing an answer
+  to:
+  \[
+  P-Q\quad = \quad?
+  \]
+
+  \bigskip
+
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+| TyQ (Forall, binding1, _, t'1), TyQ (Exists, binding2, _, t'2) ->
+    par env judgement "Intro-Flex" [
+      try_proof_root "Forall-L" begin
+        let env, t'1, _ = bind_flexible_in_type env binding1 t'1 in
+        sub_type env t'1 t2 >>=
+        qed
+      end;
+      try_proof_root "Exists-R" begin
+        let env, t'2, _ = bind_flexible_in_type env binding2 t'2 in
+        sub_type env t1 t'2 >>=
+        qed
+      end
+    ]
+  \end{minted}
+\end{frame}
+
+\begin{frame}[plain]
+  \backupslide
+  \MzTitle{The proof search monad}
+\end{frame}
+
+\begin{frame}{}
+  \begin{itemize}
+    \item \mezzo is \green{not decidable}; however
+    \item we \emph{know} \green{where} we want to backtrack;
+      {\tiny(and where we do not want to go, e.g. $\pi \ast \pi' \ast \pi'' \leq p \ast q \ast r$)}
+    \item we \emph{know} \green{which} branch is most likely to succeed;
+      {\tiny($\alpha = \tyint$ usually better than $\alpha = \top$)}
+    \item we \emph{know} that sub-branches \emph{terminate}
+      {\tiny(no need to interleave)}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{}
+  In that case, adopt the library style where:
+  \begin{itemize}
+    \item the proof search algorithm looks \green{like the paper rules};
+    \item you get a \green{derivation for free};
+    \item the library works for \green{any logic} {\tiny(not in \mezzo, hence this
+      paper)}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[plain]
+  \backupslide
+  \MzTitle{The library, dissected}
+\end{frame}
+
+\begin{frame}[fragile]{From the library's perspective (1)}
+  The client's logic must satisfy \code{LOGIC}.
+
+  \bigskip
+
+  \begin{minted}{ocaml}
+module type LOGIC = sig
+  type formula
+  type rule_name
+  type state
+end
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{From the library's perspective (2)}
+  The library defines derivation trees for \code{LOGIC}.
+
+  \bigskip
+
+  \begin{minted}{ocaml}
+module Derivations = functor (L: LOGIC) -> struct
+  type derivation = goal * rule
+  and goal = L.state * L.formula
+  and rule = L.rule_name * premises
+  and premises = Premises of derivation list
+end
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{From the library's perspective (3)}
+  An \code{'a m} is the working \green{state} of a rule application.
+
+  \vfill
+
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+module Make(Logic: LOGIC)(M: MONAD) = struct
+  module Proofs = Derivations(Logic)
+  include Proofs
+
+  module L: MONOID with type t = Proofs.derivation list = struct
+    type t = Proofs.derivation list
+    let empty = []
+    let append = List.append
+  end
+
+  include WriterT(M)(L) (*
+    type 'a m = (L.t * 'a) M.m
+    val return : 'a -> 'a m
+    val tell : L.a -> unit m
+    val ( >>= ) : 'a m -> ('a -> 'b m) -> 'b m
+  *)
+
+  ...
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{From the library's perspective (4)}
+  An \code{'a outcome} is the \green{result} of a rule application.
+
+  \bigskip
+
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+  ...
+
+  type 'a outcome = ('a * derivation) M.m
+
+  (* _Record_ a proof in the premises. *)
+  val premise: 'a outcome -> 'a m
+  (* _Conclude_ from the given premises. *)
+  val prove:
+    Logic.formula ->
+    (Logic.state * rule_name) m ->
+    Logic.state outcome
+end
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{From the client's perspective (1)}
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+
+module MyLogic = struct ... end
+module MyMonad = ProofSearchMonad.Make(MyLogic)(MExplore)
+
+let rec solve (state: state) (goal: formula): state outcome =
+  match goal with
+  ...
+  | And (g1, g2) ->
+      prove goal begin
+        premise (solve state g1) >>= fun state ->
+        premise (solve state g2) >>= fun state ->
+        state, R_And
+      end
+  ...
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Let's refine (1)}
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+let qed rule = fun state -> state, rule
+
+
+let rec solve (state: state) (goal: formula): state outcome =
+  match goal with
+  ...
+  | And (g1, g2) ->
+      prove goal begin
+        premise (solve state g1) >>= fun state ->
+        premise (solve state g2) >>=
+        qed R_And
+      end
+  ...
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Let's refine (2)}
+  \begin{minted}[fontsize=\footnotesize]{ocaml}
+val choice :
+  Logic.formula ->
+  'a list -> ('a -> (Logic.state * rule_name) m) -> Logic.state outcome
+
+let rec solve (state: state) (goal: formula): state outcome =
+  match goal with
+  ...
+  | Or (g1, g2) ->
+      choice goal [ R_OrL, g1; R_OrR, g2 ] (fun (rule, g) ->
+        premise (solve state g) >>=
+        qed rule
+      )
+  ...
+  \end{minted}
+\end{frame}
+
+\begin{frame}{In conclusion}
+  \begin{itemize}
+    \item A powerful library for writing the proof search of \mezzo
+    \item Generalizes if your problem fits the earlier description
+    \item Proof derivations for free
+    \item We used them mostly for debugging {\tiny(In \mezzo, a post-processing
+      phase tries to extract \emph{relevant} parts of a \emph{failed}
+      derivation.)}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Next}
+  \begin{itemize}
+    \item \green{Extend} the library to record \emph{failed} derivations
+      {\tiny(\code{choice} now records \emph{all} the things we tried; \code{>>=}
+      records up to the first \emph{failed} premise)}
+    \item See if compatible with more complex exploration strategies.
+  \end{itemize}
+\end{frame}
+
+\end{document}
+
+\begin{frame}{A glance at the type-checking rules}
+  General form: $K, P \vdash e: t$. (K = kinding environment)
+
+  \bigskip
+
+  \small
+  \begin{mathpar}
+    \inferrule[Sub]
+    {K; P_2 \vdash e: t_1 \\\\ P_1 \leq P_2 \\ t_1 \leq t_2}
+    {K; P_1 \vdash e: t_2}
+
+    \inferrule[Frame]
+    {K; P_1 \vdash e: t}
+    {K; P_1\ast P_2 \vdash e: \tybar{t}{P_2}}
+
+    \inferrule[Read]
+    {t \text{ is duplicable} \\\\
+     P \text{ is } \tyatomic{x}{
+                     \tyconcrete{A}{\ldots; f: t; \ldots}}
+    }
+    {K; P \vdash x.f: \tybar{t}{P}}
+
+    \inferrule[Tuple]
+    {}
+    {K \vdash (x_1, \ldots, x_n): (\tysingleton {x_1}, \ldots, \tysingleton{x_n})}
+
+    \inferrule[Application]
+    {}
+    {K; \tyatomic{x_1}{t_2 \rightarrow t_1} \ast \tyatomic{x_2}{t_2} \vdash \eapply{x_1}{x_2}: t_1}
+  \end{mathpar}
+\end{frame}
+
+\begin{frame}{A glance at the subsumption relation}
+  \small
+  \begin{mathpar}
+  \inferrule[DecomposeTuple]
+    {}
+    {
+    \begin{array}{r@{}l}
+    & \tyatomic{y}{(\ldots,t,\ldots)} \cr
+    \subsub
+    \tyexists x\kterm{(
+      \tystar
+        {& \tyatomic{y}{(\ldots, \tysingleton{x}, \ldots)}}
+        {\tyatomic{x}{t}}
+      )}
+    \end{array}
+    }
+
+  \inferrule[EqualsForEquals]
+    {}
+    {
+      \tystar
+      {(y_1 = y_2)}
+      {[y_1/x]P}
+      \subsub
+      \tystar
+      {(y_1 = y_2)}
+      {[y_2/x]P}
+    }
+
+  \inferrule[EqualityReflexive]
+    {} % si x : term
+    {\tyempty \leq (x = x)}
+
+  \inferrule[Fold]
+    {\tyconcrete{A}{\vec{f}: \vec{t}} \text{ is an unfolding of } \tyapp{X}{\vec{T}}}
+    {
+      \tyatomic{x}{\tyconcrete{A}{\vec{f}: \vec{t}}}
+      \leq
+      \tyatomic{x}{\tyapp{X}{\vec{T}}}
+    }
+  \end{mathpar}
+\end{frame}
+
+\begin{frame}{A glance at the subsumption relation (2)}
+  \small
+  \begin{mathpar}
+  \inferrule[ForallElim]
+    {}
+    {\tyforall X\kappa P \leq [T/X]P}
+
+  \inferrule[CopyDup]
+    {P\text{ is duplicable}}
+    {C[t] \ast P \leq C[\tybar tP] \ast P}
+
+  \inferrule[HideDuplicablePrecondition]
+    {P \text{ is duplicable}}
+    {
+      (\tyatomic{x}{\tyarrow{\tybar{t_1}{P}}{t_2}})
+      \ast P
+      \leq
+      \tyatomic{x}{\tyarrow{t_1}{t_2}}
+    }
+
+  \inferrule[ExistsIntro]
+    {}
+    {[T/X]P \leq \tyexists X\kappa P}
+
+  \inferrule[CoArrow]
+    {u_1 \leq t_1 \\ t_2 \leq u_2}
+    {\tyatomic{x}{\tyarrow{t_1}{t_2}} \leq \tyatomic{x}{\tyarrow{u_1}{u_2}}}
+
+  \inferrule[Unfold]
+    {\tyconcrete{A}{\vec{f}: \vec{t}} \text{ is an unfolding of } \tyapp{X}{\vec{T}} \\\\
+     \tyapp{X}{\vec{T}} \text{ has only one branch}}
+    {
+      \tyatomic{x}{\tyapp{X}{\vec{T}}}
+      \leq
+      \tyatomic{x}{\tyconcrete{A}{\vec{f}: \vec{t}}}
+    }
+  \end{mathpar}
+\end{frame}
+
+\begin{frame}{A suitable representation of permissions}
+  \mezzo is a powerful language: the type-checker is complex, because of the
+  interaction between:
+  \begin{itemize}
+    \item \green{duplicable} \emph{vs.} \green{non-duplicable} permissions,
+    \item equivalent permissions: \\
+      \code{\green{z @ (=x, =y)} * x @ ref int * y @ ref int ≡ \\
+      z @ (ref int, ref int)},
+    \item inference (of type application): \code{cons [?] (x, y)},
+    \item subtyping: \\
+      \code{[a] duplicable a => (ref a) -> a ≡ \\
+      \empty[y: value] (ref (=y)) -> (=y)},
+    \item the frame rule…
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The prototype}
+  Backtracking \green{stops} at the expression level: we keep \green{one
+  solution} when type-checking an expression.
+
+  \bigskip
+
+  The implementation relies on:
+  \begin{itemize}
+    \item efficient (good complexity) and easy-to-use (persistent) \green{data
+      structures} for inference with backtracking (union-find, levels)
+    \item fine-tuned \green{heuristics} (prioritize more likely solutions first)
+  \end{itemize}
+  Both required significant effort.
+
+%   \bigskip
+
+%   \sidenote{(Some performance limitations because of
+%   binders.)}
+\end{frame}
+
+\begin{frame}[fragile]{\mezzo: reason about ownership}
+  Consider list concatenation.
+
+  \bigskip
+
+  \begin{mzcode}
+val append: [a] (
+  consumes xs: list a,
+  consumes ys: list a
+) -> (zs: list a)
+  \end{mzcode}
+\end{frame}
+
+\begin{frame}[fragile]{\mezzo: reason about ownership}
+  \green{Example}: \code{list (ref int)}.
+
+  \bigskip
+
+  \bigskip
+
+  \MzStartBubbles
+  \begin{mzcode}
+...#\MzProgramPoint#
+let zs = append (xs, ys) in
+...#\MzProgramPoint#
+  \end{mzcode}
+
+  \MzStartBubbles
+  \MzAutoBubble{6em}{3em}{4cm}{Before function call}{%
+    xs @ list (ref int) * ys @ list (ref int)
+  }
+  \MzAutoBubble{6em}{-3em}{4cm}{After function call}{%
+    zs @ list (ref int)
+  }
+\end{frame}
+
+\begin{frame}[fragile]{\mezzo: reason about ownership}
+  \green{Example}: \code{list int}.
+
+  \bigskip
+
+  \MzStartBubbles
+  \begin{mzcode}
+...#\MzProgramPoint#
+let zs = append (xs, ys) in
+...#\MzProgramPoint#
+  \end{mzcode}
+  \MzStartBubbles
+  \MzAutoBubble{6em}{3em}{6cm}{Before function call}{%
+    xs @ list int * ys @ list int
+  }
+  \MzAutoBubble{6em}{-3em}{6cm}{After function call}{%
+    xs @ list int * ys @ list int *\\
+    zs @ list int
+  }
+
+\end{frame}
+
+\end{document}

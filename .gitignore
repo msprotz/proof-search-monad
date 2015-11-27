@@ -41,3 +41,4 @@ myocamlbuild.ml
 *.class
 *.pdfsync
 _minted-main
+pyg
